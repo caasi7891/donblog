@@ -1,0 +1,56 @@
+---
+title: "Hello, DonEngine: Building a Static Blog with Next.js 16"
+date: "2026-03-29"
+category: "dev"
+tags: ["nextjs", "mdx", "architecture"]
+summary: "The first dev log — documenting how I bootstrapped this hybrid static blog from scratch using Next.js 16, Tailwind v4, and a custom JSON-to-MDX pipeline."
+---
+
+## Why a Static Blog?
+
+Speed is non-negotiable. This blog is built to load in under 100ms anywhere in the world. By going fully static with Next.js SSG, every page is a pre-rendered HTML file served from a CDN edge node.
+
+The only dynamic content right now is the Terminal Log widget on the landing page — which will eventually be wired to a live Firestore stream.
+
+## The Tech Stack
+
+- **Framework**: Next.js 16 (App Router, RSC-first)
+- **Styling**: Tailwind CSS v4 with Material Design 3 color tokens
+- **MDX**: `next-mdx-remote` with server-side rendering
+- **Charts**: `lightweight-charts` for financial data visualization
+- **Highlighting**: `shiki` with the `one-dark-pro` theme
+
+## The JSON → MDX Pipeline
+
+Trading logs are written to `logs/trading/*.json` by an external script. A `prebuild` hook compiles them into MDX files in `content/trading/` before Next.js builds:
+
+```typescript
+// scripts/generate-trading-mdx.mjs (simplified)
+const frontmatter = `---
+title: "${data.title}"
+date: "${data.date}"
+---`;
+
+const mdxContent = `${frontmatter}
+
+${data.content}
+
+<StaticChart ticker="${data.ticker}" data={${JSON.stringify(data.chartSnapshot)}} />
+`;
+```
+
+This means every trade gets a beautiful, interactive chart for free — zero manual authoring required.
+
+## Design System
+
+The color palette is sourced from the M3 dark scheme generator, locked to a deep `#0e0e0e` background with `#9ecaff` as the primary accent. Typography is:
+
+- **Headlines**: Space Grotesk (tight tracking, ultra-readable)
+- **Body**: Inter (the gold standard)
+- **Code**: JetBrains Mono (terminal-native)
+
+## What's Next
+
+- Wire up search with a static JSON index generated at build time
+- Add OG image generation per post
+- Connect trading logs to a live data ingest pipeline

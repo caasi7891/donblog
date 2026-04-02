@@ -1,0 +1,28 @@
+{
+  "title": "AAPL Long — Breakout from Consolidation",
+  "date": "2026-03-29",
+  "ticker": "AAPL",
+  "tags": ["options", "breakout", "momentum"],
+  "summary": "Entered a long position on AAPL following a confirmed breakout above the $218 resistance level with strong volume confirmation.",
+  "buyPrice": 218.45,
+  "sellPrice": 224.10,
+  "content": "## Setup & Thesis\n\nApple has been consolidating between $212 and $218 for three weeks. Today's open gapped above the range on above-average volume, confirming the breakout.\n\n### Entry Criteria\n\n- Price above 21-day EMA\n- Volume > 1.5x 30-day average\n- RSI breaking out of neutral zone (50-55 → 60+)\n\n## Risk Management\n\nStop placed at $215.80 (below the prior resistance level, now support). Position sized at 2% max risk.\n\n## Result\n\nTarget hit at $224.10. Partial exit at $221 for risk management, letting the runner go. Net PnL: **+$5.65/share**.",
+  "chartSnapshot": [
+    { "date": "2026-03-10", "open": 212.50, "high": 215.00, "low": 211.20, "close": 213.80 },
+    { "date": "2026-03-11", "open": 213.80, "high": 216.40, "low": 213.10, "close": 215.60 },
+    { "date": "2026-03-12", "open": 215.50, "high": 217.90, "low": 214.80, "close": 217.10 },
+    { "date": "2026-03-13", "open": 217.00, "high": 218.50, "low": 215.50, "close": 216.20 },
+    { "date": "2026-03-14", "open": 216.20, "high": 217.80, "low": 215.00, "close": 215.40 },
+    { "date": "2026-03-17", "open": 215.40, "high": 217.20, "low": 214.60, "close": 216.80 },
+    { "date": "2026-03-18", "open": 216.80, "high": 218.10, "low": 216.00, "close": 217.50 },
+    { "date": "2026-03-19", "open": 217.50, "high": 219.00, "low": 217.00, "close": 218.30 },
+    { "date": "2026-03-20", "open": 218.30, "high": 220.50, "low": 217.90, "close": 219.80 },
+    { "date": "2026-03-21", "open": 219.80, "high": 222.00, "low": 219.20, "close": 221.40 },
+    { "date": "2026-03-24", "open": 221.40, "high": 223.10, "low": 220.50, "close": 222.70 },
+    { "date": "2026-03-25", "open": 222.70, "high": 225.30, "low": 222.00, "close": 224.10 },
+    { "date": "2026-03-26", "open": 224.10, "high": 226.80, "low": 223.50, "close": 225.90 },
+    { "date": "2026-03-27", "open": 225.90, "high": 227.00, "low": 224.30, "close": 226.50 },
+    { "date": "2026-03-28", "open": 226.50, "high": 228.10, "low": 225.80, "close": 227.40 },
+    { "date": "2026-03-29", "open": 227.40, "high": 229.00, "low": 226.90, "close": 228.20 }
+  ]
+}
