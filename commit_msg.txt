@@ -1,0 +1,8 @@
+feat: implement static-first personal blog architecture and MDX pipeline
+
+This commit introduces the core functionality for the Hybrid Static Blog:
+- Setup project dependencies (Next.js 16 + Tailwind v4) and layout/routing
+- Created custom JSON-to-MDX compilation pipeline and helper scripts
+- Added custom MDX components including StaticChart and CodeBlock
+- Updated globals.css with new design system styles
+- Added build and error capturing utilities
