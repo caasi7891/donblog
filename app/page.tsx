@@ -1,7 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
+import { getAllPosts } from "@/lib/mdx";
 
-export default function Home() {
+export default async function Home() {
+  const allPosts = await getAllPosts();
+  const recentPosts = allPosts.slice(0, 3);
   return (
     <div className="max-w-7xl mx-auto space-y-10 p-6 lg:p-12 pb-20">
       {/* Hero / Summary Widget */}
@@ -90,42 +93,49 @@ export default function Home() {
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <article className="bg-surface-container rounded-lg p-6 hover:bg-surface-bright transition-all duration-200 flex flex-col gap-4 border border-transparent hover:border-outline-variant/20 cursor-pointer">
-            <div className="flex justify-between items-start">
-              <span className="bg-primary-container/20 text-on-primary-container px-2 py-0.5 rounded-sm font-mono text-[10px] uppercase tracking-wider border border-primary-container/30">Dev</span>
-              <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">Oct 24, 2023</span>
+          {recentPosts.length === 0 ? (
+            <div className="md:col-span-3 py-12 text-center text-outline-variant font-mono text-sm uppercase">
+               No recent records found in R2 database.
             </div>
-            <h3 className="text-xl font-headline font-semibold text-on-surface group-hover:text-primary transition-colors">Optimizing Vector Database Queries for Sentiment Analysis</h3>
-            <p className="text-on-surface-variant text-sm leading-relaxed">Refining the retrieval pipeline to reduce latency in real-time news processing by 40% using Pinecone namespaces.</p>
-            <div className="flex gap-2 mt-auto">
-              <span className="font-mono text-[10px] text-on-surface-variant">#ai</span>
-              <span className="font-mono text-[10px] text-on-surface-variant">#python</span>
-            </div>
-          </article>
-          
-          <article className="bg-surface-container rounded-lg p-6 hover:bg-surface-bright transition-all duration-200 flex flex-col gap-4 border border-transparent hover:border-outline-variant/20 cursor-pointer">
-            <div className="flex justify-between items-start">
-              <span className="bg-secondary-container/20 text-on-secondary-container px-2 py-0.5 rounded-sm font-mono text-[10px] uppercase tracking-wider border border-secondary-container/30">Trading</span>
-              <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">Oct 22, 2023</span>
-            </div>
-            <h3 className="text-xl font-headline font-semibold text-on-surface group-hover:text-secondary transition-colors">Handling Black Swan Events in Automated Liquidities</h3>
-            <p className="text-on-surface-variant text-sm leading-relaxed">How my model behaved during the recent volatility spike and why circuit breakers are your best friend.</p>
-            <div className="flex gap-2 mt-auto">
-              <span className="font-mono text-[10px] text-on-surface-variant">#crypto</span>
-            </div>
-          </article>
+          ) : (
+            recentPosts.map(post => {
+              const bgColors: Record<string, string> = {
+                dev: "bg-primary-container/20 text-on-primary-container border-primary-container/30",
+                trading: "bg-secondary-container/20 text-on-secondary-container border-secondary-container/30",
+                travel: "bg-tertiary-container/20 text-on-tertiary-container border-tertiary-container/30"
+              };
+              const hoverColors: Record<string, string> = {
+                dev: "group-hover:text-primary",
+                trading: "group-hover:text-secondary",
+                travel: "group-hover:text-tertiary"
+              };
 
-          <article className="bg-surface-container rounded-lg p-6 hover:bg-surface-bright transition-all duration-200 flex flex-col gap-4 border border-transparent hover:border-outline-variant/20 cursor-pointer">
-            <div className="flex justify-between items-start">
-              <span className="bg-tertiary-container/20 text-on-tertiary-container px-2 py-0.5 rounded-sm font-mono text-[10px] uppercase tracking-wider border border-tertiary-container/30">Travel</span>
-              <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">Oct 15, 2023</span>
-            </div>
-            <h3 className="text-xl font-headline font-semibold text-on-surface group-hover:text-tertiary transition-colors">The Silence of Hokkaido: A Solo Drive Diary</h3>
-            <p className="text-on-surface-variant text-sm leading-relaxed">Escaping the terminal for 7 days to drive through the northern landscapes of Japan during autumn peak.</p>
-            <div className="flex gap-2 mt-auto">
-              <span className="font-mono text-[10px] text-on-surface-variant">#japan</span>
-            </div>
-          </article>
+              const badgeColor = bgColors[post.category] || bgColors.dev;
+              const titleHoverColor = hoverColors[post.category] || hoverColors.dev;
+
+              return (
+                <Link key={post.slug} href={`/${post.category}/${post.slug}`}>
+                  <article className="group bg-surface-container rounded-lg p-6 hover:bg-surface-bright transition-all duration-200 flex flex-col gap-4 border border-transparent hover:border-outline-variant/20 h-full">
+                    <div className="flex justify-between items-start">
+                      <span className={`px-2 py-0.5 rounded-sm font-mono text-[10px] uppercase tracking-wider border ${badgeColor}`}>
+                        {post.category}
+                      </span>
+                      <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">{post.date}</span>
+                    </div>
+                    <h3 className={`text-xl font-headline font-semibold text-on-surface transition-colors ${titleHoverColor}`}>
+                      {post.title}
+                    </h3>
+                    <p className="text-on-surface-variant text-sm leading-relaxed">{post.summary}</p>
+                    <div className="flex gap-2 mt-auto">
+                      {post.tags?.slice(0, 3).map(tag => (
+                        <span key={tag} className="font-mono text-[10px] text-on-surface-variant uppercase">#{tag}</span>
+                      ))}
+                    </div>
+                  </article>
+                </Link>
+              );
+            })
+          )}
         </div>
       </section>
     </div>

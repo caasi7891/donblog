@@ -7,6 +7,8 @@ import { Comments } from "@/components/Comments";
 import Link from "next/link";
 import fs from "fs/promises";
 import path from "path";
+import remarkGfm from "remark-gfm";
+import { PostAdminActions } from "@/components/PostAdminActions";
 
 // Support for standard SSG paths
 export async function generateStaticParams() {
@@ -49,12 +51,15 @@ export default async function PostPage({ params }: { params: Promise<{ category:
     <div className="max-w-7xl mx-auto px-6 lg:px-12 py-8 grid grid-cols-1 lg:grid-cols-12 gap-12 min-h-screen">
       <article className="lg:col-span-8 space-y-10">
         <header className="space-y-6">
-          <div className="flex items-center gap-3 font-mono text-[10px] tracking-widest text-primary">
-            <Link href={`/${category}`} className="px-2 py-0.5 bg-primary-container text-on-primary-container rounded-sm uppercase hover:bg-primary hover:text-on-primary transition-colors">
-              {category}
-            </Link>
-            <span className="text-outline-variant">•</span>
-            <time dateTime={metadata.date}>{metadata.date}</time>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 font-mono text-[10px] tracking-widest text-primary">
+              <Link href={`/${category}`} className="px-2 py-0.5 bg-primary-container text-on-primary-container rounded-sm uppercase hover:bg-primary hover:text-on-primary transition-colors">
+                {category}
+              </Link>
+              <span className="text-outline-variant">•</span>
+              <time dateTime={metadata.date}>{metadata.date}</time>
+            </div>
+            <PostAdminActions category={category} slug={slug} />
           </div>
           
           <h1 className="text-4xl md:text-6xl font-bold font-headline leading-none tracking-tighter text-on-surface">
@@ -80,7 +85,11 @@ export default async function PostPage({ params }: { params: Promise<{ category:
 
         {/* MDX Content Area */}
         <div className="prose prose-invert prose-lg max-w-none font-body text-on-surface-variant leading-relaxed space-y-6">
-          <MDXRemote source={content} components={components} />
+          <MDXRemote 
+            source={content} 
+            components={components} 
+            options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
+          />
         </div>
 
         {/* Comments Section */}

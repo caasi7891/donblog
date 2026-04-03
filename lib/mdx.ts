@@ -1,8 +1,14 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { S3Client, ListObjectsV2Command, GetObjectCommand } from "@aws-sdk/client-s3";
 import matter from "gray-matter";
 
-const CONTENT_DIR = path.join(process.cwd(), "content");
+const s3Client = new S3Client({
+  region: "auto",
+  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
+  },
+});
 
 export interface PostMetadata {
   slug: string;
@@ -16,8 +22,18 @@ export interface PostMetadata {
 
 export async function getPostBySlug(category: string, slug: string) {
   try {
-    const fullPath = path.join(CONTENT_DIR, category, `${slug}.mdx`);
-    const fileContents = await fs.readFile(fullPath, "utf8");
+    const bucketName = process.env.R2_BUCKET_NAME;
+    if (!bucketName) return null;
+
+    const command = new GetObjectCommand({
+      Bucket: bucketName,
+      Key: `${category}/${slug}.mdx`,
+    });
+
+    const response = await s3Client.send(command);
+    if (!response.Body) return null;
+
+    const fileContents = await response.Body.transformToString();
     const { data, content } = matter(fileContents);
 
     return {
@@ -25,40 +41,59 @@ export async function getPostBySlug(category: string, slug: string) {
       content,
     };
   } catch (err) {
+    console.error("getPostBySlug R2 Error for", slug, ":", err);
     return null;
   }
 }
 
 export async function getAllPosts(category?: string): Promise<PostMetadata[]> {
   try {
+    const bucketName = process.env.R2_BUCKET_NAME;
+    if (!bucketName) {
+      console.warn("R2_BUCKET_NAME not set");
+      return [];
+    }
+
     const categories = category ? [category] : ["dev", "trading", "travel"];
     let posts: PostMetadata[] = [];
 
     for (const cat of categories) {
-      const dirPath = path.join(CONTENT_DIR, cat);
-      let fileNames: string[] = [];
-      try {
-        fileNames = await fs.readdir(dirPath);
-      } catch (err) {
-        // Ignore if dir doesn't exist
-        continue;
-      }
+      const listCommand = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: `${cat}/`,
+      });
 
-      for (const fileName of fileNames) {
-        if (!fileName.endsWith(".mdx")) continue;
+      const listResponse = await s3Client.send(listCommand);
+      const objects = listResponse.Contents || [];
+
+      for (const obj of objects) {
+        if (!obj.Key || !obj.Key.endsWith(".mdx")) continue;
         
-        const slug = fileName.replace(/\.mdx$/, "");
-        const fullPath = path.join(dirPath, fileName);
-        const fileContents = await fs.readFile(fullPath, "utf8");
-        const { data } = matter(fileContents);
+        const slug = obj.Key.split("/").pop()?.replace(/\.mdx$/, "") || "";
+        
+        try {
+          const getCommand = new GetObjectCommand({
+            Bucket: bucketName,
+            Key: obj.Key,
+          });
 
-        posts.push({ ...data, slug, category: cat } as PostMetadata);
+          const getResponse = await s3Client.send(getCommand);
+          if (!getResponse.Body) continue;
+
+          const fileContents = await getResponse.Body.transformToString();
+          const { data } = matter(fileContents);
+
+          posts.push({ ...data, slug, category: cat } as PostMetadata);
+        } catch (e) {
+             console.error("Failed downloading post:", obj.Key, e);
+        }
       }
     }
 
     // Sort descending by date
-    return posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return posts.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
   } catch (err) {
+    console.error("getAllPosts R2 Error:", err);
     return [];
   }
 }

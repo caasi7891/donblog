@@ -11,7 +11,7 @@ export function TopNavBar() {
       <div className="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
         <div className="flex items-center gap-8">
           <Link href="/" className="text-xl font-bold tracking-tighter text-neutral-100 font-headline">
-            Building DonEngine
+            DonBlog
           </Link>
           <div className="hidden md:flex space-x-8 font-headline tracking-tight items-center">
             <Link href="/dev" className="text-neutral-500 hover:text-neutral-300 transition-colors">Dev</Link>

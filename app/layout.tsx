@@ -11,7 +11,7 @@ const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-headl
 const jetBrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "Building DonEngine",
+  title: "DonBlog",
   description: "Trading, Dev, and Travel logs by Don",
 };
 
