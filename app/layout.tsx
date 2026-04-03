@@ -4,6 +4,7 @@ import "../globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TopNavBar } from "@/components/TopNavBar";
 import { SideNavBar } from "@/components/SideNavBar";
+import { AuthProvider } from "@/components/AuthProvider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-body" });
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-headline" });
@@ -23,13 +24,15 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className="dark text-[15px]">
       <body className={`${inter.variable} ${spaceGrotesk.variable} ${jetBrainsMono.variable} bg-background text-on-surface font-body selection:bg-primary selection:text-on-primary min-h-screen antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          <TopNavBar />
-          <div className="flex min-h-screen pt-16">
-            <SideNavBar />
-            <div className="flex-grow lg:ml-64 relative">
-              {children}
+          <AuthProvider>
+            <TopNavBar />
+            <div className="flex min-h-screen pt-16">
+              <SideNavBar />
+              <div className="flex-grow lg:ml-64 relative">
+                {children}
+              </div>
             </div>
-          </div>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

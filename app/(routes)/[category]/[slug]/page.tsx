@@ -3,6 +3,7 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import { notFound } from "next/navigation";
 import { CodeBlock } from "@/components/mdx/CodeBlock";
 import { StaticChart } from "@/components/mdx/StaticChart";
+import { Comments } from "@/components/Comments";
 import Link from "next/link";
 import fs from "fs/promises";
 import path from "path";
@@ -81,6 +82,9 @@ export default async function PostPage({ params }: { params: Promise<{ category:
         <div className="prose prose-invert prose-lg max-w-none font-body text-on-surface-variant leading-relaxed space-y-6">
           <MDXRemote source={content} components={components} />
         </div>
+
+        {/* Comments Section */}
+        <Comments postSlug={slug} />
       </article>
 
       <aside className="lg:col-span-4 space-y-8 hidden lg:block">
