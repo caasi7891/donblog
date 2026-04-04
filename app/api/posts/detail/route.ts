@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     const fileContents = await response.Body.transformToString();
     const { data, content } = matter(fileContents);
 
-    return NextResponse.json({ success: true, title: data.title, content });
+    return NextResponse.json({ success: true, title: data.title, content, tags: data.tags || [] });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

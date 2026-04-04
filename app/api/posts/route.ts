@@ -10,26 +10,58 @@ const s3Client = new S3Client({
   },
 });
 
+/** Extract the first markdown image URL from content, e.g. ![alt](url) */
+function extractFirstImage(content: string): string | null {
+  const match = content.match(/!\[[^\]]*\]\(([^)]+)\)/);
+  return match ? match[1] : null;
+}
+
+/** Generate a short unique ID: base-36 timestamp + 4 random chars */
+function generateUniqueId(): string {
+  const tsBase = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 6);
+  return `${tsBase}${rand}`;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { title, category, content, originalSlug, originalCategory } = await req.json();
+    const { title, category, content, tags, originalSlug, originalCategory } = await req.json();
 
     if (!title || !category || !content) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Create a slug from title
-    const slug = title
+    // Create a base slug from title
+    const baseSlug = title
       .toLowerCase()
       .replace(/[^a-z0-9ㄱ-ㅎㅏ-ㅣ가-힣]+/g, "-")
       .replace(/(^-|-$)+/g, "");
 
+    // If editing an existing post, keep the original slug to preserve the URL.
+    // For new posts, append a unique ID so same-title posts never overwrite each other.
+    const slug = (originalSlug && originalCategory) ? originalSlug : `${baseSlug}-${generateUniqueId()}`;
+
     const date = new Date().toISOString();
+
+    // Auto-detect thumbnail from first image in content
+    const thumbnail = extractFirstImage(content);
+
+    // Build frontmatter lines
+    const frontmatterLines = [
+      `title: "${title.replace(/"/g, '\\"')}"`,
+      `date: "${date}"`,
+    ];
+    if (thumbnail) {
+      frontmatterLines.push(`thumbnail: "${thumbnail}"`);
+    }
+    if (Array.isArray(tags) && tags.length > 0) {
+      const tagList = tags.map((t: string) => `  - ${t}`).join("\n");
+      frontmatterLines.push(`tags:\n${tagList}`);
+    }
 
     // Construct MDX with frontmatter
     const mdxContent = `---
-title: "${title.replace(/"/g, '\\"')}"
-date: "${date}"
+${frontmatterLines.join("\n")}
 ---
 
 ${content}`;

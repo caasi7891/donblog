@@ -1,10 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { getAllPosts } from "@/lib/mdx";
+import { HomeRecentPosts } from "@/components/HomeRecentPosts";
 
 export default async function Home() {
   const allPosts = await getAllPosts();
-  const recentPosts = allPosts.slice(0, 3);
+  const recentPosts = allPosts.slice(0, 6);
   return (
     <div className="max-w-7xl mx-auto space-y-10 p-6 lg:p-12 pb-20">
       {/* Hero / Summary Widget */}
@@ -58,8 +59,8 @@ export default async function Home() {
       {/* Category Navigation (Asymmetric Bento) */}
       <section className="grid grid-cols-1 md:grid-cols-12 gap-6">
         <Link href="/dev" className="md:col-span-4 group relative overflow-hidden bg-surface-container rounded-xl aspect-[4/3] border border-outline-variant/10 hover:-translate-y-1 transition-all duration-300">
-          <div className="absolute inset-0 bg-background mix-blend-luminosity"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent z-10"></div>
+          <Image src="/dev_img.jpg" alt="Dev Log" fill className="object-cover opacity-50 group-hover:opacity-65 transition-opacity" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent z-10"></div>
           <div className="absolute bottom-0 left-0 p-8 z-20">
             <span className="font-mono text-[10px] uppercase tracking-widest text-primary mb-2 block">Engineering</span>
             <h2 className="text-3xl font-headline font-bold text-on-surface">Dev Log</h2>
@@ -67,7 +68,8 @@ export default async function Home() {
           </div>
         </Link>
         <Link href="/trading" className="md:col-span-5 group relative overflow-hidden bg-surface-container rounded-xl aspect-[4/3] border border-outline-variant/10 hover:-translate-y-1 transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent z-10"></div>
+          <Image src="/trading_img.jpg" alt="Trading" fill className="object-cover opacity-50 group-hover:opacity-65 transition-opacity" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent z-10"></div>
           <div className="absolute bottom-0 left-0 p-8 z-20">
             <span className="font-mono text-[10px] uppercase tracking-widest text-secondary mb-2 block">Markets</span>
             <h2 className="text-3xl font-headline font-bold text-on-surface">Trading</h2>
@@ -75,7 +77,8 @@ export default async function Home() {
           </div>
         </Link>
         <Link href="/travel" className="md:col-span-3 group relative overflow-hidden bg-surface-container rounded-xl aspect-[4/3] md:aspect-auto border border-outline-variant/10 hover:-translate-y-1 transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent z-10"></div>
+          <Image src="/travel_img.jpg" alt="Travel" fill className="object-cover opacity-50 group-hover:opacity-65 transition-opacity" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent z-10"></div>
           <div className="absolute bottom-0 left-0 p-8 z-20">
             <span className="font-mono text-[10px] uppercase tracking-widest text-tertiary mb-2 block">Journal</span>
             <h2 className="text-3xl font-headline font-bold text-on-surface">Travel</h2>
@@ -85,59 +88,7 @@ export default async function Home() {
       </section>
 
       {/* Recent Posts Feed */}
-      <section className="space-y-6">
-        <div className="flex justify-between items-end border-b border-outline-variant/10 pb-4">
-          <h2 className="text-2xl font-headline font-bold">Recent Records</h2>
-          <Link href="/archive" className="font-mono text-[10px] uppercase tracking-widest text-on-surface-variant hover:text-primary transition-colors">
-            View All Posts
-          </Link>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {recentPosts.length === 0 ? (
-            <div className="md:col-span-3 py-12 text-center text-outline-variant font-mono text-sm uppercase">
-               No recent records found in R2 database.
-            </div>
-          ) : (
-            recentPosts.map(post => {
-              const bgColors: Record<string, string> = {
-                dev: "bg-primary-container/20 text-on-primary-container border-primary-container/30",
-                trading: "bg-secondary-container/20 text-on-secondary-container border-secondary-container/30",
-                travel: "bg-tertiary-container/20 text-on-tertiary-container border-tertiary-container/30"
-              };
-              const hoverColors: Record<string, string> = {
-                dev: "group-hover:text-primary",
-                trading: "group-hover:text-secondary",
-                travel: "group-hover:text-tertiary"
-              };
-
-              const badgeColor = bgColors[post.category] || bgColors.dev;
-              const titleHoverColor = hoverColors[post.category] || hoverColors.dev;
-
-              return (
-                <Link key={post.slug} href={`/${post.category}/${post.slug}`}>
-                  <article className="group bg-surface-container rounded-lg p-6 hover:bg-surface-bright transition-all duration-200 flex flex-col gap-4 border border-transparent hover:border-outline-variant/20 h-full">
-                    <div className="flex justify-between items-start">
-                      <span className={`px-2 py-0.5 rounded-sm font-mono text-[10px] uppercase tracking-wider border ${badgeColor}`}>
-                        {post.category}
-                      </span>
-                      <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">{post.date}</span>
-                    </div>
-                    <h3 className={`text-xl font-headline font-semibold text-on-surface transition-colors ${titleHoverColor}`}>
-                      {post.title}
-                    </h3>
-                    <p className="text-on-surface-variant text-sm leading-relaxed">{post.summary}</p>
-                    <div className="flex gap-2 mt-auto">
-                      {post.tags?.slice(0, 3).map(tag => (
-                        <span key={tag} className="font-mono text-[10px] text-on-surface-variant uppercase">#{tag}</span>
-                      ))}
-                    </div>
-                  </article>
-                </Link>
-              );
-            })
-          )}
-        </div>
-      </section>
+      <HomeRecentPosts posts={recentPosts} />
     </div>
   );
 }

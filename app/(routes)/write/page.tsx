@@ -25,7 +25,13 @@ function WritePageInner() {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("trading");
   const [content, setContent] = useState("");
-  
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
   useEffect(() => {
@@ -33,7 +39,6 @@ function WritePageInner() {
       if (!user) {
         router.push("/login");
       } else if (user.email !== adminEmail && adminEmail) {
-        // Not the admin
         router.push("/");
       }
     }
@@ -48,6 +53,7 @@ function WritePageInner() {
              setTitle(data.title || "");
              setContent(data.content || "");
              setCategory(editCategory);
+             setTags(data.tags || []);
            }
         })
         .catch(err => console.error("Failed to fetch post for edit", err));
@@ -62,9 +68,26 @@ function WritePageInner() {
     );
   }
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const addTag = (value: string) => {
+    const cleaned = value.replace(/^#+/, "").trim().toLowerCase().replace(/\s+/g, "-");
+    if (cleaned && !tags.includes(cleaned)) {
+      setTags(prev => [...prev, cleaned]);
+    }
+    setTagInput("");
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === "," || e.key === " ") {
+      e.preventDefault();
+      addTag(tagInput);
+    } else if (e.key === "Backspace" && tagInput === "" && tags.length > 0) {
+      setTags(prev => prev.slice(0, -1));
+    }
+  };
+
+  const removeTag = (tag: string) => {
+    setTags(prev => prev.filter(t => t !== tag));
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -104,6 +127,7 @@ function WritePageInner() {
           title, 
           category, 
           content,
+          tags,
           originalSlug: editSlug,
           originalCategory: editCategory 
         })
@@ -112,8 +136,9 @@ function WritePageInner() {
       
       if (!response.ok) throw new Error(data.error || "Failed to upload");
       
-      alert(`Post successfully uploaded to R2 at ${data.filePath}!`);
-      router.push(`/${category}/${data.slug}`);
+      const msg = editSlug ? "Post updated successfully!" : "Post published successfully!";
+      setSuccessMsg(msg);
+      setTimeout(() => router.push(`/${category}/${data.slug}`), 1200);
     } catch (err: any) {
       alert("Error: " + err.message);
     } finally {
@@ -124,7 +149,13 @@ function WritePageInner() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">
       <h1 className="text-4xl font-headline font-bold mb-8">{editSlug ? "Edit Post" : "Write a new post"}</h1>
-      
+
+      {successMsg && (
+        <div className="mb-6 flex items-center gap-3 bg-green-500/10 border border-green-500/30 text-green-400 rounded-xl px-5 py-4 text-sm font-semibold">
+          <span className="material-symbols-outlined text-lg">check_circle</span>
+          {successMsg} Redirecting…
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
@@ -152,9 +183,40 @@ function WritePageInner() {
             </select>
           </div>
         </div>
+
+        {/* Hashtag Input */}
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-neutral-400 uppercase tracking-widest">Hashtags</label>
+          <div className="min-h-[48px] w-full bg-[#111] border border-white/10 rounded-xl px-4 py-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all flex flex-wrap items-center gap-2">
+            {tags.map(tag => (
+              <span key={tag} className="flex items-center gap-1 bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full text-xs font-mono">
+                #{tag}
+                <button
+                  type="button"
+                  onClick={() => removeTag(tag)}
+                  className="hover:text-white transition-colors leading-none ml-0.5"
+                  aria-label={`Remove ${tag}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            <input
+              type="text"
+              value={tagInput}
+              onChange={e => setTagInput(e.target.value)}
+              onKeyDown={handleTagKeyDown}
+              onBlur={() => { if (tagInput.trim()) addTag(tagInput); }}
+              placeholder={tags.length === 0 ? "Type a tag and press Enter or Space..." : "Add more..."}
+              className="flex-1 min-w-[180px] bg-transparent focus:outline-none text-sm placeholder:text-neutral-600"
+            />
+          </div>
+          <p className="text-xs text-neutral-500">Press <kbd className="px-1 py-0.5 bg-white/10 rounded text-[10px]">Enter</kbd>, <kbd className="px-1 py-0.5 bg-white/10 rounded text-[10px]">Space</kbd>, or <kbd className="px-1 py-0.5 bg-white/10 rounded text-[10px]">,</kbd> to add. Backspace to remove last.</p>
+        </div>
+
         <div className="space-y-2">
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-semibold text-neutral-400 uppercase tracking-widest">CONTENT(MARKDOWN)</label>
+              <label className="text-sm font-semibold text-neutral-400 uppercase tracking-widest">Content (Markdown)</label>
               <div>
                 <input 
                   type="file" 
