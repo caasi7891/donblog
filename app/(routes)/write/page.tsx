@@ -31,6 +31,10 @@ function WritePageInner() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [isTemplatesLoading, setIsTemplatesLoading] = useState(false);
+  const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
 
   const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
@@ -45,6 +49,8 @@ function WritePageInner() {
   }, [user, loading, router, adminEmail]);
 
   useEffect(() => {
+    fetchTemplates();
+    
     if (editSlug && editCategory) {
       fetch(`/api/posts/detail?category=${editCategory}&slug=${editSlug}`)
         .then(res => res.json())
@@ -59,6 +65,58 @@ function WritePageInner() {
         .catch(err => console.error("Failed to fetch post for edit", err));
     }
   }, [editSlug, editCategory]);
+
+  const fetchTemplates = async () => {
+    setIsTemplatesLoading(true);
+    try {
+      const response = await fetch("/api/templates");
+      const data = await response.json();
+      if (Array.isArray(data)) setTemplates(data);
+    } catch (err) {
+      console.error("Failed to fetch templates:", err);
+    } finally {
+      setIsTemplatesLoading(false);
+    }
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!content.trim()) return alert("Content is empty. Write something to save as a template.");
+    const name = prompt("Enter a name for this template:");
+    if (!name) return;
+
+    try {
+      const response = await fetch("/api/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, content })
+      });
+      if (response.ok) {
+        alert("Template saved!");
+        fetchTemplates();
+      } else {
+        throw new Error("Failed to save");
+      }
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  };
+
+  const handleSelectTemplate = (templateContent: string) => {
+    if (content.trim() && !confirm("This will replace your current content. Continue?")) return;
+    setContent(templateContent);
+    setShowTemplateDropdown(false);
+  };
+
+  const handleDeleteTemplate = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("Delete this template?")) return;
+    try {
+      const response = await fetch(`/api/templates?id=${id}`, { method: "DELETE" });
+      if (response.ok) fetchTemplates();
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
+  };
 
   if (loading || !user || (adminEmail && user.email !== adminEmail)) {
     return (
@@ -216,8 +274,60 @@ function WritePageInner() {
 
         <div className="space-y-2">
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-semibold text-neutral-400 uppercase tracking-widest">Content (Markdown)</label>
-              <div>
+              <label className="text-sm font-semibold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
+                Content (Markdown)
+              </label>
+              <div className="flex items-center gap-3">
+                {/* Template System */}
+                <div className="relative">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowTemplateDropdown(!showTemplateDropdown)}
+                    className="text-xs font-bold uppercase tracking-widest bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">description</span>
+                    Templates
+                  </button>
+                  
+                  {showTemplateDropdown && (
+                    <div className="absolute right-0 top-10 w-64 bg-[#111] border border-white/10 rounded-xl shadow-2xl z-50 p-2 max-h-80 overflow-y-auto">
+                      <div className="p-2 border-b border-white/5 mb-2 flex justify-between items-center">
+                        <span className="text-[10px] font-bold uppercase tracking-tighter text-neutral-500">Saved Templates</span>
+                        <button 
+                          type="button"
+                          onClick={handleSaveTemplate}
+                          className="text-[10px] font-bold text-primary hover:underline uppercase"
+                        >
+                          + Save New
+                        </button>
+                      </div>
+                      {templates.length === 0 ? (
+                        <p className="text-xs text-neutral-600 p-4 text-center">No templates found.</p>
+                      ) : (
+                        <div className="space-y-1">
+                          {templates.map(t => (
+                            <div 
+                              key={t.id}
+                              onClick={() => handleSelectTemplate(t.content)}
+                              className="group w-full flex items-center justify-between p-3 rounded-lg hover:bg-white/5 text-left transition-colors cursor-pointer"
+                            >
+                              <span className="text-sm text-neutral-300 truncate pr-2">{t.name}</span>
+                              <button 
+                                onClick={(e) => handleDeleteTemplate(t.id, e)}
+                                className="opacity-0 group-hover:opacity-100 text-neutral-600 hover:text-red-400 p-1"
+                              >
+                                <span className="material-symbols-outlined text-sm">delete</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="w-px h-6 bg-white/5 mx-1" />
+
                 <input 
                   type="file" 
                   accept="image/*" 
@@ -229,9 +339,10 @@ function WritePageInner() {
                   type="button" 
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploadingImage}
-                  className="text-xs font-bold uppercase tracking-widest bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                  className="text-xs font-bold uppercase tracking-widest bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
                 >
-                  {isUploadingImage ? "Uploading..." : "+ Add Image"}
+                  <span className="material-symbols-outlined text-[16px]">image</span>
+                  {isUploadingImage ? "Uploading..." : "Add Image"}
                 </button>
               </div>
             </div>

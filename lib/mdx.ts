@@ -27,7 +27,7 @@ export async function getPostBySlug(category: string, slug: string) {
 
     const command = new GetObjectCommand({
       Bucket: bucketName,
-      Key: `${category}/${slug}.mdx`,
+      Key: `${category}/${decodeURIComponent(slug)}.mdx`,
     });
 
     const response = await s3Client.send(command);

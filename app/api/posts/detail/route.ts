@@ -21,7 +21,7 @@ export async function DELETE(req: NextRequest) {
 
     const command = new DeleteObjectCommand({
       Bucket: process.env.R2_BUCKET_NAME || "",
-      Key: `${category}/${slug}.mdx`
+      Key: `${category}/${decodeURIComponent(slug)}.mdx`
     });
 
     await s3Client.send(command);
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
 
     const getCommand = new GetObjectCommand({
       Bucket: process.env.R2_BUCKET_NAME || "",
-      Key: `${category}/${slug}.mdx`
+      Key: `${category}/${decodeURIComponent(slug)}.mdx`
     });
 
     const response = await s3Client.send(getCommand);
