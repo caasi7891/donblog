@@ -2,59 +2,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { getAllPosts } from "@/lib/mdx";
 import { HomeRecentPosts } from "@/components/HomeRecentPosts";
+import { TradingSummary } from "@/components/TradingSummary";
 
 export default async function Home() {
   const allPosts = await getAllPosts();
   const recentPosts = allPosts.slice(0, 6);
   return (
     <div className="max-w-7xl mx-auto space-y-10 p-6 lg:p-12 pb-20">
-      {/* Hero / Summary Widget */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 bg-surface-container rounded-xl p-8 border-l-2 border-primary shadow-2xl relative overflow-hidden group">
-          <div className="relative z-10 flex flex-col justify-between h-full">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h1 className="text-4xl md:text-5xl font-headline font-bold tracking-tighter text-on-surface mb-2">Systems Operational.</h1>
-                <p className="text-on-surface-variant font-mono text-sm tracking-tight uppercase">Today Summary Widget</p>
-              </div>
-              <div className="bg-secondary/10 text-secondary px-4 py-2 rounded-sm border border-secondary/20 flex flex-col items-end">
-                <span className="font-mono text-xs font-bold uppercase tracking-widest">Daily PnL</span>
-                <span className="text-2xl font-mono font-bold">+$420.00</span>
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div className="flex gap-4">
-                <div className="bg-surface-container-low px-4 py-2 rounded-sm border border-outline-variant/30 flex-1 sm:flex-none">
-                  <span className="block font-mono text-[10px] uppercase text-on-surface-variant">Trades Executed</span>
-                  <span className="text-xl font-mono font-medium">05</span>
-                </div>
-                <div className="bg-surface-container-low px-4 py-2 rounded-sm border border-outline-variant/30 flex-1">
-                  <span className="block font-mono text-[10px] uppercase text-on-surface-variant">Model Insight</span>
-                  <p className="text-sm font-body text-on-surface">Positive momentum in the AI model, slight pullback in volatility.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-20 -mt-20 group-hover:bg-primary/10 transition-colors"></div>
-        </div>
-
-        {/* Live Feed / Status */}
-        <div className="bg-surface-container-low rounded-xl p-6 border border-outline-variant/10 flex flex-col gap-4">
-          <h3 className="font-mono text-xs uppercase tracking-widest text-on-surface-variant flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span> Terminal Log
-          </h3>
-          <div className="flex-1 font-mono text-[11px] space-y-2 text-on-surface-variant/80 overflow-hidden">
-            <p><span className="text-primary-dim">[08:42:12]</span> ETH-PERP position opened at $2,421</p>
-            <p><span className="text-primary-dim">[09:15:00]</span> Training epoch 42 completed (loss: 0.0014)</p>
-            <p><span className="text-primary-dim">[10:02:45]</span> New travel entry: Kyoto reflections</p>
-            <p><span className="text-primary-dim">[11:20:10]</span> API health check: 100% operational</p>
-            <p><span className="text-secondary-dim">[12:00:01]</span> Daily profit target reached</p>
-          </div>
-          <button className="w-full py-2 bg-surface-container text-on-surface font-mono text-[10px] uppercase tracking-widest border border-outline-variant/20 hover:bg-surface-bright transition-colors cursor-pointer">
-            Expand Terminal
-          </button>
-        </div>
-      </section>
+      <TradingSummary />
 
       {/* Category Navigation (Asymmetric Bento) */}
       <section className="grid grid-cols-1 md:grid-cols-12 gap-6">
