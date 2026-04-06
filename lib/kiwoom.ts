@@ -143,10 +143,34 @@ export class KiwoomClient {
     });
   }
 
+  static async getExecutionHistory(config: AccountConfig, date?: string) {
+    const targetDate = date || new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    return this.request(config, "/api/dostk/acnt", "ka10810", {
+      base_dt: targetDate,
+      ottks_tp: "0",
+      ch_crd_tp: "0",
+    });
+  }
+
   static async getAccountEvaluation(config: AccountConfig) {
     return this.request(config, "/api/dostk/acnt", "kt00018", {
       qry_tp: "1",
       dmst_stex_tp: "KRX",
+    });
+  }
+
+  // 기간별주문체결상세 - kt00009 (returns individual execution rows)
+  static async getOrderExecutionDetail(config: AccountConfig, date?: string) {
+    const targetDate = date || new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    return this.request(config, "/api/dostk/acnt", "kt00009", {
+      ord_dt: targetDate,
+      stk_bond_tp: "0",   // 0: All (stock + bond)
+      mrkt_tp: "0",       // 0: All markets
+      sell_tp: "0",       // 0: All (buy + sell)
+      qry_tp: "1",        // 1: Order date search
+      stk_cd: "",         // empty = all stocks
+      fr_ord_no: "",      // empty = from beginning
+      dmst_stex_tp: "%",  // All
     });
   }
 

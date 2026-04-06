@@ -1,97 +1,113 @@
 import { NextRequest, NextResponse } from "next/server";
 import { KiwoomClient } from "@/lib/kiwoom";
 
+/**
+ * /api/trading/summary
+ * Used by the HOME DASHBOARD only.
+ * Shows a simple aggregated summary: total PNL, asset value, and recent sell logs.
+ * DO NOT use kt00009 here — that is only for /trading/history.
+ */
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const date = searchParams.get("date"); // YYYYMMDD
-    const accounts = KiwoomClient.getAccounts();
 
+    const accounts = KiwoomClient.getAccounts();
     if (accounts.length === 0) {
       return NextResponse.json({ error: "No Kiwoom accounts configured" }, { status: 400 });
     }
 
-    const accountPromises = accounts.map(async (acc) => {
+    let totalTodayPnL = 0;
+    let totalAsset = 0;
+    const mergedLogs: string[] = [];
+    const detailedLogs: any[] = [];
+
+    for (const acc of accounts) {
       try {
         const [history, evaluation] = await Promise.all([
           KiwoomClient.getTradeHistory(acc, date || undefined),
-          KiwoomClient.getAccountEvaluation(acc)
+          KiwoomClient.getAccountEvaluation(acc),
         ]);
-        
-        return {
-          history,
-          evaluation,
-          label: acc.label
-        };
+
+        // PNL total from ka10170
+        if (history && !history.error) {
+          const pnl = Number(String(history.tot_pl_amt ?? "0").replace(/,/g, ""));
+          totalTodayPnL += pnl;
+
+          // Trade logs from ka10170 — one row per stock (sell summary)
+          const rows: any[] = history.tdy_trde_diary ?? [];
+          rows
+            .filter((item: any) => {
+              const nm = String(item.stk_nm ?? "").trim();
+              return nm !== "" && nm !== "0000000";
+            })
+            .forEach((item: any) => {
+              const pnlNum = Number(String(item.pl_amt ?? "0").replace(/,/g, ""));
+              
+              // Earning Rate (ROR) - Try multiple fields then fallback to manual calculation
+              let earningRate = Number(String(item.erng_rt || item.pnl_rat || item.evlu_pft_lss_rat || "0").replace(/,/g, ""));
+              
+              if (earningRate === 0 && pnlNum !== 0) {
+                // Manual fallback: Rate = Profit / Cost
+                // Total Sell Amount = sel_avg_pric * sel_qty (or buy_qty/sel_qty depending on the TR)
+                const sellPrc = Number(String(item.sel_avg_pric || "0").replace(/,/g, ""));
+                const qty = Number(String(item.sel_qty || item.trde_qty || "0").replace(/,/g, ""));
+                const sellAmt = sellPrc * qty;
+                
+                if (sellAmt > 0) {
+                  const cost = sellAmt - pnlNum;
+                  if (cost > 0) {
+                    earningRate = (pnlNum / cost) * 100;
+                  }
+                } else {
+                  // Alternative: (SellPrc - BuyPrc) / BuyPrc
+                  const buyPrc = Number(String(item.buy_avg_pric || "0").replace(/,/g, ""));
+                  if (buyPrc > 0 && sellPrc > 0) {
+                    earningRate = ((sellPrc - buyPrc) / buyPrc) * 100;
+                  }
+                }
+              }
+
+              let perfStr = pnlNum > 0
+                ? `+${pnlNum.toLocaleString()}`
+                : pnlNum < 0
+                  ? pnlNum.toLocaleString()
+                  : `@${Number(String(item.sel_avg_pric ?? "0").replace(/,/g, "")).toLocaleString()}`;
+
+              // Add rate of return in parentheses
+              if (pnlNum !== 0) {
+                perfStr = `${perfStr} (${earningRate.toFixed(2)}%)`;
+              }
+
+              mergedLogs.push(`${item.stk_nm}, ${perfStr}`);
+              detailedLogs.push({
+                name: item.stk_nm,
+                pnlStr: perfStr,
+                time: "------",
+                side: "SELL",
+              });
+            });
+        }
+
+        // Asset value from kt00018
+        if (evaluation && !evaluation.error) {
+          const asset = Number(String(evaluation.prsm_dpst_aset_amt ?? "0").replace(/,/g, ""));
+          totalAsset += asset;
+        }
       } catch (err: any) {
-        console.error(`Failed to fetch for ${acc.label}:`, err.message);
-        return null;
+        console.error(`[summary] Failed for ${acc.label}:`, err.message);
       }
-    });
-
-    const results = (await Promise.all(accountPromises)).filter((r): r is any => r !== null);
-
-    // Aggregate data
-    let totalTodayPnL = 0;
-    let totalTradeCount = 0;
-    let totalAsset = 0;
-    let mergedLogs: string[] = [];
-
-    for (const res of results) {
-       if (!res || !res.history || res.history.error || res.history.authentication_failed_after_retry) {
-         continue;
-       }
-
-       const accPnL = String(res.history.tot_pl_amt || "0").replace(/,/g, "");
-       totalTodayPnL += Number(accPnL);
-
-       const rawLogs = res.history.tdy_trde_diary || [];
-       const tradeLogs = rawLogs.filter((item: any) => item.stk_nm && item.stk_nm.trim() !== "");
-       totalTradeCount += tradeLogs.length;
-
-       if (res.evaluation && !res.evaluation.error) {
-         const accAsset = String(res.evaluation.prsm_dpst_aset_amt || "0").replace(/,/g, "");
-         totalAsset += Number(accAsset);
-       }
-
-       // Format Logs: 'stock_name, income, trade_time'
-       const formatted = tradeLogs.map((item: any) => {
-         // Debug log for fields if they were missing before
-         if (tradeLogs.indexOf(item) === 0) {
-           console.log(`[DEBUG] Fields for ${item.stk_nm}:`, Object.keys(item));
-           console.log(`[DEBUG] Raw trde_dtm: ${item.trde_dtm}, trde_tm: ${item.trde_tm}, stk_trde_tm: ${item.stk_trde_tm}`);
-         }
-
-         // Realized PnL field check (fallback for all common Kiwoom versions)
-         const pnlRaw = item.tot_pl_amt || item.pl_amt || item.dnl_pl_amt || item.thdt_pl_amt || "0";
-         const pnl = String(pnlRaw).replace(/,/g, "");
-         const pnlNum = Number(pnl);
-         const pnlStr = pnlNum > 0 ? `+${pnlNum.toLocaleString()}` : pnlNum.toLocaleString();
-
-         // Time parsing - Looking for 6-digit selling time HHMMSS
-         const fullTime = item.stk_trde_tm || item.trde_tm || item.trde_dtm || "";
-         let timeStr = "";
-         if (fullTime.length >= 14) {
-           timeStr = fullTime.substring(8, 14); // Extract HHMMSS from YYYYMMDDHHMMSS
-         } else if (fullTime.length >= 6) {
-           timeStr = fullTime.substring(0, 6); // Already HHMMSS
-         } else {
-           timeStr = fullTime || "------"; // Fallback to whatever is there
-         }
-
-         return `${item.stk_nm}, ${pnlStr}, ${timeStr}`;
-       });
-       mergedLogs = [...mergedLogs, ...formatted];
     }
 
     return NextResponse.json({
       todayPnL: totalTodayPnL,
-      tradeCount: totalTradeCount,
-      totalAsset: totalAsset,
+      tradeCount: detailedLogs.length,
+      totalAsset,
       logs: mergedLogs.length > 0 ? mergedLogs.slice(0, 10) : ["NO RECENT TRADES"],
+      detailedLogs,
     });
   } catch (error: any) {
-    console.error("Trading Summary Aggregation Error:", error);
+    console.error("[summary] Aggregation error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

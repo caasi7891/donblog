@@ -130,19 +130,16 @@ function TradingSummaryContent() {
           )}
         </div>
 
-        <button 
-          type="button"
-          onClick={() => {
-            if (isHistorical) setSelectedDate(new Date().toISOString().split('T')[0]);
-            else {
+          <button 
+            type="button"
+            onClick={() => {
               const apiDate = selectedDate.replace(/-/g, "");
               router.push(`/trading/history?date=${apiDate}`);
-            }
-          }}
-          className="w-full py-2 bg-surface-container text-on-surface font-mono text-[10px] uppercase tracking-widest border border-outline-variant/20 hover:bg-surface-bright transition-colors cursor-pointer text-center"
-        >
-          {isHistorical ? "Back to Current" : "Historical Summary Detail"}
-        </button>
+            }}
+            className="w-full py-2 bg-surface-container text-on-surface font-mono text-[10px] uppercase tracking-widest border border-outline-variant/20 hover:bg-surface-bright transition-colors cursor-pointer text-center"
+          >
+            Historical Summary Detail
+          </button>
       </div>
     </section>
   );
