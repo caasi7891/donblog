@@ -184,4 +184,13 @@ export class KiwoomClient {
       trde_tp: orderType === "market" ? "3" : "0",
     });
   }
+
+  static async getMinuteChart(config: AccountConfig, stockCode: string, date: string) {
+    return this.request(config, "/api/dostk/chart", "ka10080", {
+      stk_cd: stockCode.endsWith("_AL") ? stockCode : `${stockCode}_AL`,
+      tic_scope: "1",
+      upd_stkpc_tp: "1",
+      base_dt: date,
+    });
+  }
 }
