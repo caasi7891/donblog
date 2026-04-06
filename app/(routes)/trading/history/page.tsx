@@ -9,6 +9,8 @@ interface ExecutionLog {
   code: string;
   qty: number;
   price: number;
+  totalAmount: number;
+  ror: string;
   pnlStr: string;
   time: string;
   side: "BUY" | "SELL" | "UNKNOWN";
@@ -143,11 +145,13 @@ function HistoryDetailContent() {
 
           <div className="bg-surface-container border border-outline-variant/10 rounded-sm overflow-hidden shadow-2xl">
             {/* Table header */}
-            <div className="p-4 bg-black/40 grid grid-cols-5 text-[10px] uppercase text-on-surface-variant tracking-widest border-b border-outline-variant/20 font-bold">
+            <div className="p-4 bg-black/40 grid grid-cols-7 text-[10px] uppercase text-on-surface-variant tracking-widest border-b border-outline-variant/20 font-bold">
               <span>Entity</span>
               <span className="text-center">Action</span>
               <span className="text-center">Qty</span>
               <span className="text-center">Price</span>
+              <span className="text-center">Total Amount</span>
+              <span className="text-center">ROR</span>
               <span className="text-right">Registry Time</span>
             </div>
 
@@ -173,34 +177,40 @@ function HistoryDetailContent() {
                       ? "text-neutral-700"
                       : "text-on-surface-variant group-hover:text-primary";
 
-                  return (
-                    <div
-                      key={i}
-                      className="p-4 grid grid-cols-5 items-center hover:bg-primary/5 transition-colors group border-l-2 border-transparent hover:border-primary"
-                    >
-                      <span className="text-sm font-bold tracking-tight text-on-surface">
-                        {log.name}
-                      </span>
-                      <div className="flex justify-center">
+                    return (
+                      <div
+                        key={i}
+                        className="p-4 grid grid-cols-7 items-center hover:bg-primary/5 transition-colors group border-l-2 border-transparent hover:border-primary"
+                      >
+                        <span className="text-sm font-bold tracking-tight text-on-surface">
+                          {log.name}
+                        </span>
+                        <div className="flex justify-center">
+                          <span
+                            className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter ${sideColor}`}
+                          >
+                            {log.side}
+                          </span>
+                        </div>
+                        <span className="text-center font-mono text-xs text-on-surface-variant">
+                          {log.qty > 0 ? `${log.qty.toLocaleString()}주` : "--"}
+                        </span>
+                        <span className="text-center font-bold font-mono text-on-surface">
+                          {log.price > 0 ? `₩${log.price.toLocaleString()}` : "--"}
+                        </span>
+                        <span className="text-center font-mono text-xs text-on-surface-variant">
+                          {log.totalAmount > 0 ? `₩${log.totalAmount.toLocaleString()}` : "--"}
+                        </span>
+                        <span className={`text-center font-bold font-mono text-xs ${log.ror.includes('+') ? 'text-green-400' : log.ror.includes('-') ? 'text-red-400' : 'text-neutral-500'}`}>
+                          {log.ror}
+                        </span>
                         <span
-                          className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter ${sideColor}`}
+                          className={`text-right font-mono text-[11px] transition-colors ${timeColor}`}
                         >
-                          {log.side}
+                          [{log.time}]
                         </span>
                       </div>
-                      <span className="text-center font-mono text-xs text-on-surface-variant">
-                        {log.qty > 0 ? `${log.qty.toLocaleString()}주` : "--"}
-                      </span>
-                      <span className="text-center font-bold font-mono text-on-surface">
-                        {log.price > 0 ? `₩${log.price.toLocaleString()}` : "--"}
-                      </span>
-                      <span
-                        className={`text-right font-mono text-[11px] transition-colors ${timeColor}`}
-                      >
-                        [{log.time}]
-                      </span>
-                    </div>
-                  );
+                    );
                 })
               )}
             </div>

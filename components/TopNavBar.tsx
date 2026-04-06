@@ -115,8 +115,10 @@ export function TopNavBar() {
               </div>
             </div>
           ) : (
-            <Link href="/login" className="material-symbols-outlined text-neutral-100 p-2 hover:bg-white/5 transition-all duration-150 rounded-full scale-98 active:scale-95">
-              account_circle
+            <Link href="/login" className="text-neutral-100 p-2 hover:bg-white/10 transition-all duration-150 rounded-full scale-100 active:scale-90 border border-transparent hover:border-white/10" title="Login">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
             </Link>
           )}
         </div>

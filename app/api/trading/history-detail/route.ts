@@ -6,17 +6,8 @@ import { KiwoomClient } from "@/lib/kiwoom";
  * Used ONLY by the /trading/history daily report page.
  * Home dashboard (summary) is NOT affected.
  *
- * Uses kt00009 (기간별주문체결상세) which returns one row PER execution,
- * so partial sells (e.g. 광전자 sold 3x) appear as 3 separate log lines.
- *
- * kt00009 field names confirmed from raw response:
- *   - stk_nm       → stock name
- *   - io_tp_nm     → "현금매수" (Buy) / "현금매도" (Sell)
- *   - cntr_tm      → execution time (HH:MM:SS or HHMMSS)
- *   - cntr_qty     → executed quantity
- *   - cntr_uv      → executed price
- *   - stk_cd       → stock code
- *   array key: acnt_ord_cntr_prst_array
+ * Uses kt00009 (기간별주문체결상세) for granular logs.
+ * Calculates ROR per SELL log using intra-day matching + summary fallback.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -29,85 +20,111 @@ export async function GET(req: NextRequest) {
     }
 
     const acc = accounts[0];
+    const targetDate = date || undefined;
 
-    // kt00009 — per-execution rows
-    const raw = await (KiwoomClient as any).getOrderExecutionDetail(acc, date || undefined);
+    // Parallel fetch: granular executions (kt00009) and summary data (ka10170)
+    const [rawDetail, rawHistory] = await Promise.all([
+      (KiwoomClient as any).getOrderExecutionDetail(acc, targetDate),
+      KiwoomClient.getTradeHistory(acc, targetDate),
+    ]);
 
-    // kt00009 wraps rows in acnt_ord_cntr_prst_array (confirmed from probe)
+    // ── 1. Create Summary Map (ka10170) for historical fallback ──────────
+    const summaryMap = new Map<string, { buyPrice: number }>();
+    if (rawHistory && !rawHistory.error) {
+      const summaryRows: any[] = rawHistory.tdy_trde_diary ?? [];
+      summaryRows.forEach((item: any) => {
+        const nm = String(item.stk_nm ?? "").trim();
+        const bp = Number(String(item.buy_avg_pric || "0").replace(/,/g, ""));
+        if (nm && bp > 0) summaryMap.set(nm, { buyPrice: bp });
+      });
+    }
+
+    // ── 2. Process Granular Rows (kt00009) ──────────────────────────────
     const rowsRaw: any[] =
-      raw?.acnt_ord_cntr_prst_array ??
-      raw?.output ??
-      raw?.output1 ??
-      raw?.res_cntg_list ??
-      raw?.detail ??
+      rawDetail?.acnt_ord_cntr_prst_array ??
+      rawDetail?.output ??
+      rawDetail?.output1 ??
+      rawDetail?.res_cntg_list ??
+      rawDetail?.detail ??
       [];
 
-    // Filter out blank placeholder rows
     const rows = rowsRaw.filter((item: any) => {
       const name = String(item.stk_nm ?? "").trim();
       const code = String(item.stk_cd ?? "").trim();
       return name !== "" && code !== "" && name !== "0000000";
     });
 
-    // Deduplicate BUY rows: if the same order number appears multiple times for a buy,
-    // show it only once (user requested: "if I buy once, show once").
-    // SELL rows are always kept individually (each partial sell = separate log).
-    const seenBuyOrders = new Set<string>();
-    const dedupedRows = rows.filter((item: any) => {
-      const ioTpNm = String(item.io_tp_nm ?? "");
-      const isBuy = ioTpNm.includes("매수");
-      if (!isBuy) return true; // always keep sells
-      const ordNo = String(item.ord_no ?? "");
-      if (seenBuyOrders.has(ordNo)) return false;
-      seenBuyOrders.add(ordNo);
-      return true;
-    });
+    // Sort by time to ensure BUYS are processed before SELLS
+    rows.sort((a, b) => String(a.cntr_tm ?? "").localeCompare(String(b.cntr_tm ?? "")));
 
-    const detailedLogs = dedupedRows.map((item: any) => {
-      // ── Side ──────────────────────────────────────────────────────────────
-      // io_tp_nm: "현금매수" = Buy, "현금매도" = Sell
+    const intraDayBuyPrices = new Map<string, number>();
+    const seenBuyOrders = new Set<string>();
+
+    const detailedLogs = rows.map((item: any) => {
       const ioTpNm = String(item.io_tp_nm ?? "");
       let side: "BUY" | "SELL" | "UNKNOWN" = "UNKNOWN";
       if (ioTpNm.includes("매도")) side = "SELL";
       else if (ioTpNm.includes("매수")) side = "BUY";
 
-      // ── Registry Time ──────────────────────────────────────────────────────
-      // cntr_tm: execution time — can be "HH:MM:SS" or "HHMMSS"
+      // Price tracking
+      const qty = Number(String(item.cntr_qty ?? "0").replace(/,/g, ""));
+      const price = Number(String(item.cntr_uv ?? item.ord_uv ?? "0").replace(/,/g, ""));
+      
+      if (side === "BUY") {
+        intraDayBuyPrices.set(item.stk_nm, price);
+      }
+
+      // Deduplicate BUY orders for display (user: "buy once, show once")
+      const ordNo = String(item.ord_no ?? "");
+      let isVisible = true;
+      if (side === "BUY") {
+        if (seenBuyOrders.has(ordNo)) isVisible = false;
+        seenBuyOrders.add(ordNo);
+      }
+
+      // Calculate ROR for SELL
+      let ror = "--";
+      if (side === "SELL") {
+        // Try intra-day buy price first, then summary fallback
+        const buyPrice = intraDayBuyPrices.get(item.stk_nm) ?? summaryMap.get(item.stk_nm)?.buyPrice ?? 0;
+        if (buyPrice > 0) {
+          // Calculation: ((Sell / Buy) - 1) * 100 - Fee(0.23)
+          const rawRate = ((price / buyPrice) - 1) * 100 - 0.23;
+          ror = `${rawRate > 0 ? "+" : ""}${rawRate.toFixed(2)}%`;
+        } else {
+          ror = "0.00%";
+        }
+      }
+
+      // Time formatting
       const rawTime = String(item.cntr_tm ?? item.ord_tm ?? "");
       let timeStr = "------";
       if (rawTime.includes(":") && rawTime.length >= 8) {
-        // already formatted as HH:MM:SS
         timeStr = rawTime.substring(0, 8);
       } else if (rawTime.length >= 6) {
         const t = rawTime.replace(/\D/g, "").slice(0, 6);
         timeStr = `${t.slice(0, 2)}:${t.slice(2, 4)}:${t.slice(4, 6)}`;
-      } else if (rawTime.length > 0) {
-        timeStr = rawTime;
       }
-
-      // ── Qty & Price ────────────────────────────────────────────────────────
-      const qty = Number(String(item.cntr_qty ?? "0").replace(/,/g, ""));
-      const price = Number(String(item.cntr_uv ?? item.ord_uv ?? "0").replace(/,/g, ""));
-      const pnlStr = `${qty.toLocaleString()}주 @${price.toLocaleString()}`;
 
       return {
         name: item.stk_nm,
         code: item.stk_cd,
         qty,
         price,
-        pnlStr,
+        totalAmount: qty * price,
+        ror,
+        pnlStr: `${qty.toLocaleString()}주 @${price.toLocaleString()}`,
         time: timeStr,
         side,
+        isVisible,
         raw: item,
       };
-    });
+    }).filter(log => log.isVisible); // filter out duplicate buys
 
     return NextResponse.json({
       date: date ?? "",
       tradeCount: detailedLogs.length,
       detailedLogs,
-      debugKeys: dedupedRows.length > 0 ? Object.keys(dedupedRows[0]) : [],
-      sampleItem: dedupedRows.length > 0 ? dedupedRows[0] : null,
     });
   } catch (error: any) {
     console.error("[history-detail] Error:", error);

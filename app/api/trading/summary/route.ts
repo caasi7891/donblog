@@ -17,7 +17,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "No Kiwoom accounts configured" }, { status: 400 });
     }
 
+    const targetDate = date || undefined;
     let totalTodayPnL = 0;
+    let totalTodayROR = 0;
     let totalAsset = 0;
     const mergedLogs: string[] = [];
     const detailedLogs: any[] = [];
@@ -25,7 +27,7 @@ export async function GET(req: NextRequest) {
     for (const acc of accounts) {
       try {
         const [history, evaluation] = await Promise.all([
-          KiwoomClient.getTradeHistory(acc, date || undefined),
+          KiwoomClient.getTradeHistory(acc, targetDate),
           KiwoomClient.getAccountEvaluation(acc),
         ]);
 
@@ -34,6 +36,10 @@ export async function GET(req: NextRequest) {
           const pnl = Number(String(history.tot_pl_amt ?? "0").replace(/,/g, ""));
           totalTodayPnL += pnl;
 
+          // User requested: Just load ka10170 tot_prft_rt.
+          const rawTotalRate = Number(String(history.tot_prft_rt || "0").replace(/,/g, ""));
+          if (rawTotalRate !== 0) totalTodayROR = rawTotalRate;
+          
           // Trade logs from ka10170 — one row per stock (sell summary)
           const rows: any[] = history.tdy_trde_diary ?? [];
           rows
@@ -49,24 +55,21 @@ export async function GET(req: NextRequest) {
               
               if (earningRate === 0 && pnlNum !== 0) {
                 // Manual fallback: Rate = Profit / Cost
-                // Total Sell Amount = sel_avg_pric * sel_qty (or buy_qty/sel_qty depending on the TR)
                 const sellPrc = Number(String(item.sel_avg_pric || "0").replace(/,/g, ""));
                 const qty = Number(String(item.sel_qty || item.trde_qty || "0").replace(/,/g, ""));
                 const sellAmt = sellPrc * qty;
                 
                 if (sellAmt > 0) {
                   const cost = sellAmt - pnlNum;
-                  if (cost > 0) {
-                    earningRate = (pnlNum / cost) * 100;
-                  }
+                  if (cost > 0) earningRate = (pnlNum / cost) * 100;
                 } else {
-                  // Alternative: (SellPrc - BuyPrc) / BuyPrc
                   const buyPrc = Number(String(item.buy_avg_pric || "0").replace(/,/g, ""));
-                  if (buyPrc > 0 && sellPrc > 0) {
-                    earningRate = ((sellPrc - buyPrc) / buyPrc) * 100;
-                  }
+                  if (buyPrc > 0 && sellPrc > 0) earningRate = ((sellPrc - buyPrc) / buyPrc) * 100;
                 }
               }
+
+              // Subtract fee (0.23%) as requested
+              const finalRate = earningRate - 0.23;
 
               let perfStr = pnlNum > 0
                 ? `+${pnlNum.toLocaleString()}`
@@ -76,7 +79,7 @@ export async function GET(req: NextRequest) {
 
               // Add rate of return in parentheses
               if (pnlNum !== 0) {
-                perfStr = `${perfStr} (${earningRate.toFixed(2)}%)`;
+                perfStr = `${perfStr} (${finalRate.toFixed(2)}%)`;
               }
 
               mergedLogs.push(`${item.stk_nm}, ${perfStr}`);
@@ -101,6 +104,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       todayPnL: totalTodayPnL,
+      todayROR: totalTodayROR,
       tradeCount: detailedLogs.length,
       totalAsset,
       logs: mergedLogs.length > 0 ? mergedLogs.slice(0, 10) : ["NO RECENT TRADES"],

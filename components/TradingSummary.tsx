@@ -6,6 +6,7 @@ import Link from "next/link";
 
 interface TradingData {
   todayPnL: number;
+  todayROR: number;
   tradeCount: number;
   totalAsset: number;
   logs: string[];
@@ -57,6 +58,12 @@ function TradingSummaryContent() {
     ? (data.todayPnL > 0 ? `+${data.todayPnL.toLocaleString()}` : data.todayPnL.toLocaleString())
     : "0";
 
+  // ROR Formatting with Color
+  const rorColor = data?.todayROR && data.todayROR < 0 ? "text-red-400" : (data?.todayROR && data.todayROR > 0 ? "text-green-400" : "text-on-surface-variant");
+  const formattedROR = data
+    ? `${data.todayROR > 0 ? "+" : ""}${data.todayROR.toFixed(2)}%`
+    : "0.00%";
+
   return (
     <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="md:col-span-2 bg-surface-container rounded-xl p-8 border-l-2 border-primary shadow-2xl relative overflow-hidden group">
@@ -78,11 +85,19 @@ function TradingSummaryContent() {
                 </div>
               </div>
             </div>
-            <div className={`bg-black/20 px-6 py-3 rounded-md border border-outline-variant/10 flex flex-col items-end`}>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">PnL for Date</span>
-              <span className={`text-3xl font-mono font-bold ${pnlColor}`}>
-                {formattedPnL}
-              </span>
+            <div className="flex flex-col gap-3">
+              <div className={`bg-black/20 px-6 py-3 rounded-md border border-outline-variant/10 flex flex-col items-end min-w-[140px]`}>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">PnL for Date</span>
+                <span className={`text-3xl font-mono font-bold ${pnlColor}`}>
+                  {formattedPnL}
+                </span>
+              </div>
+              <div className={`bg-black/20 px-6 py-3 rounded-md border border-outline-variant/10 flex flex-col items-end min-w-[140px]`}>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">ROR for Date</span>
+                <span className={`text-2xl font-mono font-bold ${rorColor}`}>
+                  {formattedROR}
+                </span>
+              </div>
             </div>
           </div>
           <div className="space-y-4">
