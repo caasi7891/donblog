@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { WinningStreak } from "./WinningStreak";
 
 export function TopNavBar() {
   const { user, loading, signOut } = useAuth();
@@ -46,6 +47,11 @@ export function TopNavBar() {
             <Link href="/trading" className="text-neutral-500 hover:text-neutral-300 transition-colors">Trading</Link>
             <Link href="/travel" className="text-neutral-500 hover:text-neutral-300 transition-colors">Travel</Link>
           </div>
+        </div>
+
+        {/* Center: Winning Streak */}
+        <div className="hidden lg:flex flex-1 justify-center">
+          <WinningStreak />
         </div>
 
         <div className="flex items-center gap-2">
