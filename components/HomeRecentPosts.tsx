@@ -8,7 +8,7 @@ import type { PostMetadata } from "@/lib/mdx";
 const bgColors: Record<string, string> = {
   dev: "bg-primary-container/20 text-on-primary-container border-primary-container/30",
   trading: "bg-secondary-container/20 text-on-secondary-container border-secondary-container/30",
-  travel: "bg-tertiary-container/20 text-on-tertiary-container border-tertiary-container/30",
+  travel: "bg-tertiary/10 text-tertiary border-tertiary/20",
 };
 const hoverColors: Record<string, string> = {
   dev: "group-hover:text-primary",

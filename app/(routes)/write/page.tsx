@@ -27,6 +27,8 @@ ${summaryText}
 
 [youtube link should be here]
 
+${stockSections}
+
 # 매수·매도 공통 체크 (복기/장기 목표)
 
 ## 느낀 점
@@ -48,7 +50,7 @@ ${summaryText}
 - 오늘 매매가 **20년 트레이더로 살아남는 기반이 되었는가?**
 - 조급함과 탐욕이 아닌 **기법 체득과 훈련**에 집중했는가?
 - 오늘 하루, **내 성격과 사고방식을 바꾸려는 시도**를 했는가?
-${stockSections}`;
+`;
 
 function WritePageInner() {
   const { user, loading } = useAuth();
@@ -171,11 +173,9 @@ function WritePageInner() {
         throw new Error(summaryData.error || detailData.error || "Failed to fetch trading data");
       }
 
-      // Generate Template
       const tradeLogs = detailData.detailedLogs || [];
       const summaryItems = summaryData.detailedLogs || [];
 
-      // Map pnlStr for headers
       const pnlMap = new Map<string, string>();
       summaryItems.forEach((item: any) => pnlMap.set(item.name, item.pnlStr));
 
@@ -183,78 +183,96 @@ function WritePageInner() {
         .replace(/[\[\]\(\)·:\+%,]/g, "")
         .replace(/\s+/g, "-");
 
-      const summaryText = summaryItems.length > 0 
-        ? summaryItems.map((item: any) => {
-            const slug = slugify(item.name);
-            return `- [${item.name}: ${item.pnlStr}](#${slug})`;
-          }).join("\n")
-        : "No trades recorded for this date.";
 
       const companyNames = new Set<string>();
 
-      // Group logs by stock name
-      const grouped = tradeLogs.reduce((acc: any, log: any) => {
+      // Group logs by stock name first
+      const stockGroups = tradeLogs.reduce((acc: any, log: any) => {
         if (!acc[log.name]) {
-          acc[log.name] = { buy: [], sell: [], code: log.code || "" };
+          acc[log.name] = { logs: [], code: log.code || "" };
         }
-        if (log.side === "BUY") acc[log.name].buy.push(log);
-        else if (log.side === "SELL") acc[log.name].sell.push(log);
+        acc[log.name].logs.push(log);
         companyNames.add(log.name);
         return acc;
       }, {});
 
-      let stockSections = "";
-      Object.entries(grouped).forEach(([name, info]: [string, any]) => {
-        const logs = info;
-        const pnlStr = pnlMap.get(name) || "";
-        const slug = slugify(name);
-        
-        stockSections += `\n# <a name="${slug}"></a>${name}: ${pnlStr}\n\n`;
+      // Identify sessions for all stocks and flatten them into a globally sorted list
+      const allSessions: any[] = [];
+      Object.entries(stockGroups).forEach(([name, info]: [string, any]) => {
+        const logs = info.logs.sort((a: any, b: any) => a.time.localeCompare(b.time));
+        let position = 0;
+        let currentSession: any = null;
 
-        // Inject Static Chart (Lightweight reference)
-        const allExecs = [...logs.buy, ...logs.sell];
-        const markers = allExecs.map(ex => {
-          // Must use KST (+09:00) to match candle timestamps from Kiwoom API
-          const isoTime = `${date}T${ex.time.slice(0, 5)}:00+09:00`;
+        logs.forEach((log: any) => {
+          if (position === 0) {
+            currentSession = { name, code: info.code, buy: [], sell: [], markers: [], startTime: log.time };
+            allSessions.push(currentSession);
+          }
+          
+          const qty = parseInt(String(log.qty || "0").replace(/,/g, "")) || 0;
+          if (log.side === "BUY") {
+            currentSession.buy.push(log);
+            position += qty;
+          } else {
+            currentSession.sell.push(log);
+            position -= qty;
+          }
+
+          const isoTime = `${date}T${log.time.slice(0, 5)}:00+09:00`;
           const unixTime = Math.floor(new Date(isoTime).getTime() / 1000);
-          return {
+          currentSession.markers.push({
             time: unixTime,
-            side: ex.side,
-            price: Number(ex.price),
-            text: `${ex.side === 'BUY' ? 'B' : 'S'} @ ${Number(ex.price).toLocaleString()}`
-          };
+            side: log.side,
+            price: Number(log.price),
+            text: `${log.side === 'BUY' ? 'B' : 'S'} @ ${Number(log.price).toLocaleString()}`
+          });
         });
+      });
 
-        const cleanCode = info.code.startsWith("A") ? info.code.slice(1) : info.code;
-        stockSections += `<StaticChart ticker="${name}" code="${cleanCode}" date="${formattedDateForApi}" markers='${JSON.stringify(markers)}' />\n\n`;
+      // Sort ALL sessions chronologically by start time
+      allSessions.sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-        if (logs.buy.length > 0) {
-          stockSections += `## 매수 타점 분석\n\n`;
-          logs.buy.forEach((b: any) => {
+      // Generate Summary with Start Times
+      const summaryText = allSessions.length > 0
+        ? allSessions.map((session: any) => {
+            const timePrefix = session.startTime.slice(0, 5);
+            const pnlStr = pnlMap.get(session.name) || "";
+            // Use time-based slug for uniqueness in case of multiple sessions for same stock
+            const slug = `${slugify(session.name)}-${session.startTime.replace(/:/g, "")}`;
+            return `- [${timePrefix}] [${session.name}: ${pnlStr}](#${slug})`;
+          }).join("\n")
+        : "No trades recorded for this date.";
+
+      let stockSections = "";
+      allSessions.forEach((session: any, globalIdx) => {
+        const pnlStr = pnlMap.get(session.name) || "";
+        const slug = `${slugify(session.name)}-${session.startTime.replace(/:/g, "")}`;
+        const cleanCode = session.code.startsWith("A") ? session.code.slice(1) : session.code;
+        
+        stockSections += `\n# <a name="${slug}"></a>[${session.startTime.slice(0, 5)}] ${session.name}: ${pnlStr}\n\n`;
+
+        stockSections += `<StaticChart ticker="${session.name}" code="${cleanCode}" date="${formattedDateForApi}" sessionTime="${session.startTime}" markers='${JSON.stringify(session.markers)}' />\n\n`;
+
+        if (session.buy.length > 0) {
+          stockSections += `### 매수 타점 분석\n\n`;
+          session.buy.forEach((b: any) => {
             stockSections += `- **매수한 가격대** : ${Number(b.price).toLocaleString()}원 (${b.qty}주) @ ${b.time}\n`;
           });
           stockSections += `- **해당 구간의 수급 흐름** :\n`;
           stockSections += `- **왜 이 자리를 선택했는가?**\n    (빨간비, 체결속도, 맥점 근접, 거래량, 수급 등)\n`;
-          stockSections += `- **들어가자마자 수익/손실 여부 및 소요 시간** :\n`;
-          stockSections += `- **타점이 원칙에 부합했는가?** :\n`;
-          stockSections += `- **한 줄 정리** :\n    → \`내가 이 자리에서 진입한 건 ___ 때문이다.\`\n`;
-        } else {
-          stockSections += `*(보유 중인 종목 매도만 발생)*\n`;
+          stockSections += `- **어떤 확신이 있었나?**\n`;
         }
 
-        if (logs.sell.length > 0) {
-          stockSections += `\n## 매도 타점 분석\n\n`;
-          logs.sell.forEach((s: any) => {
+        if (session.sell.length > 0) {
+          stockSections += `\n### 매도 타점 분석\n\n`;
+          session.sell.forEach((s: any) => {
             stockSections += `- **매도한 가격대 / 시점** : ${Number(s.price).toLocaleString()}원 (${s.qty}주) [${s.ror}] @ ${s.time}\n`;
           });
           stockSections += `- **익절 or 손절 이유** :\n`;
-          stockSections += `- **익절선/컷트선 기준 지켰는가?** :\n`;
-          stockSections += `- **더 먹거나 덜 먹은 이유는?** :\n`;
-          stockSections += `- **수익이 났다면 그 근거는?** :\n`;
           stockSections += `- **손실이 났다면, 실패 원인은?** :\n    → (타점 문제 / 수급 착각 / 기준 무시 / 뇌동 진입 등)\n`;
-        } else {
-          stockSections += `*(아직 매도하지 않음)*\n`;
         }
+        
+        stockSections += `\n---\n`;
       });
 
       const fullTemplate = generateReviewTemplate(date, summaryText, stockSections);
@@ -265,8 +283,8 @@ function WritePageInner() {
       setTitle(`[Trading Review] ${date}`);
       setCategory("trading");
 
-      // Update tags with trading-review AND each company name
-      const newTags = Array.from(new Set([...tags, "trading-review", ...Array.from(companyNames).map(n => n.toLowerCase())]));
+      // FIX: Reset tags to avoid leakage from previous generated sessions
+      const newTags = Array.from(new Set(["trading-review", ...Array.from(companyNames).map(n => n.toLowerCase())]));
       setTags(newTags);
     } catch (err: any) {
       alert("Error generating review: " + err.message);
@@ -532,7 +550,12 @@ function WritePageInner() {
                     staticchart: (props: any) => {
                       try {
                         const markers = typeof props.markers === 'string' ? JSON.parse(props.markers) : props.markers;
-                        return <StaticChart {...props} markers={markers} />;
+                        const key = `chart-${props.ticker}-${props.sessionTime || props.code || 'default'}-${(markers || []).length}`;
+                        return (
+                          <div key={key} className="my-4">
+                            <StaticChart {...props} markers={markers} />
+                          </div>
+                        );
                       } catch (e) {
                         return <div className="bg-red-500/10 p-4 rounded-lg text-xs text-red-400">Chart Error: Failed to parse markers</div>;
                       }
@@ -540,7 +563,12 @@ function WritePageInner() {
                     StaticChart: (props: any) => {
                       try {
                         const markers = typeof props.markers === 'string' ? JSON.parse(props.markers) : props.markers;
-                        return <StaticChart {...props} markers={markers} />;
+                        const key = `chart-${props.ticker}-${props.sessionTime || props.code || 'default'}-${(markers || []).length}`;
+                        return (
+                          <div key={key} className="my-4">
+                            <StaticChart {...props} markers={markers} />
+                          </div>
+                        );
                       } catch (e) {
                         return <div className="bg-red-500/10 p-4 rounded-lg text-xs text-red-400">Chart Error: Failed to parse markers</div>;
                       }
