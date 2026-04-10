@@ -32,12 +32,12 @@ function HistoryDetailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const dateParam = searchParams.get("date") || new Date().toISOString().split("T")[0].replace(/-/g, "");
+  const dateParam = searchParams.get("date") || new Date().toLocaleString("sv-SE", { timeZone: "Asia/Seoul" }).split(" ")[0].replace(/-/g, "");
   const [selectedDate, setSelectedDate] = useState(() => {
     if (dateParam.length === 8) {
       return `${dateParam.substring(0, 4)}-${dateParam.substring(4, 6)}-${dateParam.substring(6, 8)}`;
     }
-    return new Date().toISOString().split("T")[0];
+    return new Date().toLocaleString("sv-SE", { timeZone: "Asia/Seoul" }).split(" ")[0];
   });
 
   const displayDate = `${dateParam.substring(0, 4)}-${dateParam.substring(4, 6)}-${dateParam.substring(6, 8)}`;

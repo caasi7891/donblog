@@ -281,7 +281,7 @@ export function StaticChart({ data: initialData, ticker, code, date, markers }: 
              </div>
              {!loading && data && data.length > 0 && (
                <span className="font-mono text-[8px] text-outline/50 uppercase" suppressHydrationWarning>
-                 TR: ka10080 | REQ: {code} | {new Date((data[0]?.time || 0) * 1000).toLocaleTimeString()} ~ {new Date((data[data.length-1]?.time || 0) * 1000).toLocaleTimeString()}
+                 TR: ka10080 | REQ: {code} | {new Date((data[0]?.time || 0) * 1000).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour12: false })} ~ {new Date((data[data.length-1]?.time || 0) * 1000).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour12: false })}
                </span>
              )}
           </div>

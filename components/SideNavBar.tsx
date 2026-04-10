@@ -1,7 +1,17 @@
 import Link from "next/link";
 import clsx from "clsx";
+import { getAllPosts } from "@/lib/mdx";
 
-export function SideNavBar() {
+export async function SideNavBar() {
+  const allPosts = await getAllPosts();
+  const tagsSet = new Set<string>();
+  allPosts.forEach(post => {
+    if (post.tags) {
+      post.tags.forEach(tag => tagsSet.add(tag));
+    }
+  });
+  const recentTags = Array.from(tagsSet).slice(0, 15);
+
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 hidden lg:flex flex-col border-r border-white/5 bg-[#131313] pt-20">
       <div className="px-6 py-4 mb-4">
@@ -21,6 +31,26 @@ export function SideNavBar() {
         <Link href="/travel" className="flex items-center gap-3 text-neutral-500 hover:text-neutral-300 hover:bg-white/5 px-6 py-3 font-mono text-xs uppercase tracking-widest transition-colors duration-200">
           <span className="material-symbols-outlined text-lg">explore</span> Travel Journal
         </Link>
+        
+        {recentTags.length > 0 && (
+          <div className="mt-8 px-6">
+            <h3 className="font-bold text-neutral-600 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest mb-4">
+              <span className="material-symbols-outlined text-neutral-600 text-sm">tag</span>
+              Trending Topics
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {recentTags.map((tag) => (
+                <Link
+                  key={tag}
+                  href={`/archive?q=${encodeURIComponent(tag)}`}
+                  className="px-2 py-1 bg-white/5 hover:bg-primary/20 text-neutral-400 hover:text-primary rounded-md font-mono text-[10px] uppercase tracking-wider transition-colors border border-white/5 hover:border-primary/30"
+                >
+                  #{tag}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </nav>
       <div className="p-4 mt-auto border-t border-white/5">
         <Link href="#" className="flex items-center gap-3 text-neutral-500 hover:text-neutral-300 px-4 py-2 font-mono text-[10px] uppercase tracking-widest">

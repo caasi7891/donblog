@@ -7,6 +7,7 @@ import { TradingSummary } from "@/components/TradingSummary";
 export default async function Home() {
   const allPosts = await getAllPosts();
   const recentPosts = allPosts.slice(0, 6);
+
   return (
     <div className="max-w-7xl mx-auto space-y-10 p-6 lg:p-12 pb-20">
       <TradingSummary />
@@ -31,6 +32,7 @@ export default async function Home() {
             <p className="text-on-surface-variant text-sm mt-2 line-clamp-2">Quantitative strategies, risk management, and market analysis.</p>
           </div>
         </Link>
+        
         <Link href="/travel" className="md:col-span-4 group relative overflow-hidden bg-surface-container rounded-xl aspect-[4/3] border border-outline-variant/10 hover:-translate-y-1 transition-all duration-300">
           <Image src="/travel_img.jpg" alt="Travel" fill priority sizes="(max-width: 768px) 100vw, 33vw" className="object-cover opacity-50 group-hover:opacity-65 transition-opacity" />
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent z-10"></div>

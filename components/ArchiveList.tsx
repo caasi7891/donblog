@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import type { PostMetadata } from "@/lib/mdx";
 
@@ -20,6 +20,13 @@ const titleHoverColors: Record<string, string> = {
 export function ArchiveList({ posts }: { posts: PostMetadata[] }) {
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
+
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q !== null) {
+      setQuery(q);
+    }
+  }, [searchParams]);
 
   const q = query.trim().toLowerCase();
 

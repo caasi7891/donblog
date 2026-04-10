@@ -24,7 +24,7 @@ function TradingSummaryContent() {
     if (d && d.length === 8) {
       return `${d.substring(0, 4)}-${d.substring(4, 6)}-${d.substring(6, 8)}`;
     }
-    return new Date().toISOString().split('T')[0];
+    return new Date().toLocaleString("sv-SE", { timeZone: "Asia/Seoul" }).split(" ")[0];
   });
 
   useEffect(() => {
@@ -43,14 +43,14 @@ function TradingSummaryContent() {
     }
     fetchData();
 
-    const isToday = selectedDate === new Date().toISOString().split('T')[0];
+    const isToday = selectedDate === new Date().toLocaleString("sv-SE", { timeZone: "Asia/Seoul" }).split(" ")[0];
     if (isToday) {
       const interval = setInterval(fetchData, 30000);
       return () => clearInterval(interval);
     }
   }, [selectedDate]);
 
-  const isHistorical = selectedDate !== new Date().toISOString().split('T')[0];
+  const isHistorical = selectedDate !== new Date().toLocaleString("sv-SE", { timeZone: "Asia/Seoul" }).split(" ")[0];
   
   // PnL Formatting with Color
   const pnlColor = data?.todayPnL && data.todayPnL < 0 ? "text-red-400" : (data?.todayPnL && data.todayPnL > 0 ? "text-green-400" : "text-on-surface-variant");
@@ -78,7 +78,7 @@ function TradingSummaryContent() {
                    <input 
                      type="date"
                      value={selectedDate}
-                     max={new Date().toISOString().split('T')[0]}
+                     max={new Date().toLocaleString("sv-SE", { timeZone: "Asia/Seoul" }).split(" ")[0]}
                      onChange={(e) => setSelectedDate(e.target.value)}
                      className="bg-transparent border-none text-[11px] font-mono text-on-surface focus:ring-0 cursor-pointer [color-scheme:dark]"
                    />

@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     // For new posts, append a unique ID so same-title posts never overwrite each other.
     const slug = (originalSlug && originalCategory) ? originalSlug : `${baseSlug}-${generateUniqueId()}`;
 
-    const date = new Date().toISOString();
+    const date = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).replace(' ', 'T') + '+09:00';
 
     // Auto-detect thumbnail from first image in content
     const thumbnail = extractFirstImage(content);

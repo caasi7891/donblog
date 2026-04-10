@@ -25,7 +25,7 @@ ${summaryText}
 
 # 매매 영상
 
-[youtube link should be here]
+[![매매 영상](http://i.ytimg.com/vi/{live/링크}/0.jpg)](https://youtube.com/live/링크)
 
 ${stockSections}
 
@@ -208,7 +208,7 @@ function WritePageInner() {
             currentSession = { name, code: info.code, buy: [], sell: [], markers: [], startTime: log.time };
             allSessions.push(currentSession);
           }
-          
+
           const qty = parseInt(String(log.qty || "0").replace(/,/g, "")) || 0;
           if (log.side === "BUY") {
             currentSession.buy.push(log);
@@ -235,12 +235,12 @@ function WritePageInner() {
       // Generate Summary with Start Times
       const summaryText = allSessions.length > 0
         ? allSessions.map((session: any) => {
-            const timePrefix = session.startTime.slice(0, 5);
-            const pnlStr = pnlMap.get(session.name) || "";
-            // Use time-based slug for uniqueness in case of multiple sessions for same stock
-            const slug = `${slugify(session.name)}-${session.startTime.replace(/:/g, "")}`;
-            return `- [${timePrefix}] [${session.name}: ${pnlStr}](#${slug})`;
-          }).join("\n")
+          const timePrefix = session.startTime.slice(0, 5);
+          const pnlStr = pnlMap.get(session.name) || "";
+          // Use time-based slug for uniqueness in case of multiple sessions for same stock
+          const slug = `${slugify(session.name)}-${session.startTime.replace(/:/g, "")}`;
+          return `- [${timePrefix}] [${session.name}: ${pnlStr}](#${slug})`;
+        }).join("\n")
         : "No trades recorded for this date.";
 
       let stockSections = "";
@@ -248,7 +248,7 @@ function WritePageInner() {
         const pnlStr = pnlMap.get(session.name) || "";
         const slug = `${slugify(session.name)}-${session.startTime.replace(/:/g, "")}`;
         const cleanCode = session.code.startsWith("A") ? session.code.slice(1) : session.code;
-        
+
         stockSections += `\n# <a name="${slug}"></a>[${session.startTime.slice(0, 5)}] ${session.name}: ${pnlStr}\n\n`;
 
         stockSections += `<StaticChart ticker="${session.name}" code="${cleanCode}" date="${formattedDateForApi}" sessionTime="${session.startTime}" markers='${JSON.stringify(session.markers)}' />\n\n`;
@@ -271,7 +271,7 @@ function WritePageInner() {
           stockSections += `- **익절 or 손절 이유** :\n`;
           stockSections += `- **손실이 났다면, 실패 원인은?** :\n    → (타점 문제 / 수급 착각 / 기준 무시 / 뇌동 진입 등)\n`;
         }
-        
+
         stockSections += `\n---\n`;
       });
 
@@ -544,37 +544,37 @@ function WritePageInner() {
               onChange={(val) => setContent(val || '')}
               height={500}
               className="w-full border border-white/10 rounded-xl overflow-hidden shadow-none focus-within:border-primary transition-all"
-                previewOptions={{
-                  rehypePlugins: [rehypeRaw],
-                  components: {
-                    staticchart: (props: any) => {
-                      try {
-                        const markers = typeof props.markers === 'string' ? JSON.parse(props.markers) : props.markers;
-                        const key = `chart-${props.ticker}-${props.sessionTime || props.code || 'default'}-${(markers || []).length}`;
-                        return (
-                          <div key={key} className="my-4">
-                            <StaticChart {...props} markers={markers} />
-                          </div>
-                        );
-                      } catch (e) {
-                        return <div className="bg-red-500/10 p-4 rounded-lg text-xs text-red-400">Chart Error: Failed to parse markers</div>;
-                      }
-                    },
-                    StaticChart: (props: any) => {
-                      try {
-                        const markers = typeof props.markers === 'string' ? JSON.parse(props.markers) : props.markers;
-                        const key = `chart-${props.ticker}-${props.sessionTime || props.code || 'default'}-${(markers || []).length}`;
-                        return (
-                          <div key={key} className="my-4">
-                            <StaticChart {...props} markers={markers} />
-                          </div>
-                        );
-                      } catch (e) {
-                        return <div className="bg-red-500/10 p-4 rounded-lg text-xs text-red-400">Chart Error: Failed to parse markers</div>;
-                      }
+              previewOptions={{
+                rehypePlugins: [rehypeRaw],
+                components: {
+                  staticchart: (props: any) => {
+                    try {
+                      const markers = typeof props.markers === 'string' ? JSON.parse(props.markers) : props.markers;
+                      const key = `chart-${props.ticker}-${props.sessionTime || props.code || 'default'}-${(markers || []).length}`;
+                      return (
+                        <div key={key} className="my-4">
+                          <StaticChart {...props} markers={markers} />
+                        </div>
+                      );
+                    } catch (e) {
+                      return <div className="bg-red-500/10 p-4 rounded-lg text-xs text-red-400">Chart Error: Failed to parse markers</div>;
                     }
-                  } as any
-                }}
+                  },
+                  StaticChart: (props: any) => {
+                    try {
+                      const markers = typeof props.markers === 'string' ? JSON.parse(props.markers) : props.markers;
+                      const key = `chart-${props.ticker}-${props.sessionTime || props.code || 'default'}-${(markers || []).length}`;
+                      return (
+                        <div key={key} className="my-4">
+                          <StaticChart {...props} markers={markers} />
+                        </div>
+                      );
+                    } catch (e) {
+                      return <div className="bg-red-500/10 p-4 rounded-lg text-xs text-red-400">Chart Error: Failed to parse markers</div>;
+                    }
+                  }
+                } as any
+              }}
             />
           </div>
         </div>

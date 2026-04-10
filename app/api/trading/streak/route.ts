@@ -51,8 +51,8 @@ export async function GET(req: NextRequest) {
        const pnl = Number(String(history.tot_pl_amt ?? "0").replace(/,/g, ""));
        if (pnl > 0) {
          streak++;
-       } else {
-         // Stop on flat or loss
+       } else if (pnl < 0) {
+         // Stop on loss
          break;
        }
     }

@@ -135,7 +135,7 @@ export class KiwoomClient {
   }
 
   static async getTradeHistory(config: AccountConfig, date?: string) {
-    const targetDate = date || new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const targetDate = date || new Date().toLocaleString("sv-SE", { timeZone: "Asia/Seoul" }).split(" ")[0].replace(/-/g, "");
     return this.request(config, "/api/dostk/acnt", "ka10170", {
       base_dt: targetDate,
       ottks_tp: "2",
@@ -144,7 +144,7 @@ export class KiwoomClient {
   }
 
   static async getExecutionHistory(config: AccountConfig, date?: string) {
-    const targetDate = date || new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const targetDate = date || new Date().toLocaleString("sv-SE", { timeZone: "Asia/Seoul" }).split(" ")[0].replace(/-/g, "");
     return this.request(config, "/api/dostk/acnt", "ka10810", {
       base_dt: targetDate,
       ottks_tp: "0",
@@ -161,7 +161,7 @@ export class KiwoomClient {
 
   // 기간별주문체결상세 - kt00009 (returns individual execution rows)
   static async getOrderExecutionDetail(config: AccountConfig, date?: string) {
-    const targetDate = date || new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const targetDate = date || new Date().toLocaleString("sv-SE", { timeZone: "Asia/Seoul" }).split(" ")[0].replace(/-/g, "");
     return this.request(config, "/api/dostk/acnt", "kt00009", {
       ord_dt: targetDate,
       stk_bond_tp: "0",   // 0: All (stock + bond)
