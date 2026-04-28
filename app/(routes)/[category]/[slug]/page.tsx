@@ -9,6 +9,7 @@ import fs from "fs/promises";
 import path from "path";
 import remarkGfm from "remark-gfm";
 import { PostAdminActions } from "@/components/PostAdminActions";
+import MentorChat from "@/components/mentor/MentorChat";
 
 // Support for standard SSG paths
 export async function generateStaticParams() {
@@ -46,6 +47,7 @@ export default async function PostPage({ params }: { params: Promise<{ category:
   }
 
   const { metadata, content } = post;
+  const localMentorEnabled = process.env.LOCAL_MENTOR_ENABLED === 'true';
 
   return (
     <div className="max-w-7xl mx-auto px-6 lg:px-12 py-8 grid grid-cols-1 lg:grid-cols-12 gap-12 min-h-screen">
@@ -91,6 +93,11 @@ export default async function PostPage({ params }: { params: Promise<{ category:
             options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
           />
         </div>
+
+        {/* Mentor Chat — trading posts only, local dev only */}
+        {localMentorEnabled && category === 'trading' && (
+          <MentorChat reviewMarkdown={content} postSlug={slug} />
+        )}
 
         {/* Comments Section */}
         <Comments postSlug={slug} />

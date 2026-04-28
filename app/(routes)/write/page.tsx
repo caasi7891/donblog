@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, Suspense } from "react";
 import dynamic from "next/dynamic";
 import rehypeRaw from "rehype-raw";
+import CoachingPanel from "@/components/mentor/CoachingPanel";
 
 const MDEditor = dynamic(() => import('@uiw/react-md-editor'), { ssr: false });
 const StaticChart = dynamic(() => import('@/components/mdx/StaticChart').then(mod => mod.StaticChart), { ssr: false });
@@ -74,6 +75,7 @@ function WritePageInner() {
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
 
   const [isFetchingReview, setIsFetchingReview] = useState(false);
+  const [coachingOpen, setCoachingOpen] = useState(false);
 
   const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
@@ -520,6 +522,20 @@ function WritePageInner() {
 
               <div className="w-px h-6 bg-white/5 mx-1" />
 
+              {/* AI 코칭 — trading only; 404 from API auto-closes panel in prod */}
+              {category === 'trading' && (
+                <button
+                  type="button"
+                  onClick={() => setCoachingOpen(true)}
+                  className="text-xs font-bold uppercase tracking-widest bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/30 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-[16px]">psychology</span>
+                  코칭 받기
+                </button>
+              )}
+
+              <div className="w-px h-6 bg-white/5 mx-1" />
+
               <input
                 type="file"
                 accept="image/*"
@@ -585,6 +601,12 @@ function WritePageInner() {
           </button>
         </div>
       </form>
+
+      <CoachingPanel
+        open={coachingOpen}
+        onClose={() => setCoachingOpen(false)}
+        reviewMarkdown={content}
+      />
     </div>
   );
 }
