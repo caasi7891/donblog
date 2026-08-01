@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { createAdminClient } from "@/lib/supabase";
 
 export async function GET() {
   try {
+    const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("templates")
       .select("*")
@@ -24,6 +25,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("templates")
       .insert([{ name, content }])
@@ -47,6 +49,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Missing template ID" }, { status: 400 });
     }
 
+    const supabase = createAdminClient();
     const { error } = await supabase
       .from("templates")
       .delete()

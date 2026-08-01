@@ -18,9 +18,26 @@ interface AccountConfig {
 class TokenManager {
   private static tokenStore = new Map<string, { token: string; expiresAt: number }>();
 
+  /** Resolve absolute expiry (ms). Prefer expires_dt (KST), then expires_in, else 23h. */
+  private static resolveExpiresAt(resBody: {
+    expires_in?: number | string;
+    expires_dt?: string;
+  }): number {
+    if (typeof resBody.expires_dt === "string" && /^\d{14}$/.test(resBody.expires_dt)) {
+      const s = resBody.expires_dt;
+      const iso = `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}T${s.slice(8, 10)}:${s.slice(10, 12)}:${s.slice(12, 14)}+09:00`;
+      return new Date(iso).getTime();
+    }
+    if (resBody.expires_in) {
+      return Date.now() + Number(resBody.expires_in) * 1000;
+    }
+    return Date.now() + 23 * 3600 * 1000;
+  }
+
   static async getToken(appKey: string, secretKey: string, forceRefresh = false): Promise<string> {
     const cached = this.tokenStore.get(appKey);
-    if (!forceRefresh && cached && Date.now() < cached.expiresAt) {
+    // Use token until 10 min before real expiry
+    if (!forceRefresh && cached && Date.now() < cached.expiresAt - 600_000) {
       return cached.token;
     }
 
@@ -42,17 +59,25 @@ class TokenManager {
     }
 
     const resBody = await res.json();
+    if (typeof resBody.return_code === "number" && resBody.return_code !== 0) {
+      throw new Error(`Token rejected: ${resBody.return_msg ?? `code ${resBody.return_code}`}`);
+    }
+
     const token = resBody.access_token || resBody.token || (resBody.data && resBody.data.token);
-    
+
     if (!token) {
       throw new Error(`Token not found in response: ${JSON.stringify(resBody)}`);
     }
 
-    const expiresIn = resBody.expires_in || 86400;
-    const expiresAt = Date.now() + (expiresIn - 600) * 1000;
-
+    const expiresAt = this.resolveExpiresAt(resBody);
     this.tokenStore.set(appKey, { token, expiresAt });
     return token;
+  }
+
+  static getStatus(appKey: string): { hasToken: boolean; expiresAt: number | null } {
+    const cached = this.tokenStore.get(appKey);
+    if (!cached) return { hasToken: false, expiresAt: null };
+    return { hasToken: Date.now() < cached.expiresAt, expiresAt: cached.expiresAt };
   }
 
   static invalidate(appKey: string) {
@@ -66,7 +91,7 @@ export class KiwoomClient {
     try {
       if (process.env.KIWOOM_ACC1_NUMBER) {
         configs.push({
-          label: "Acc 1",
+          label: "Kiwoom Acc 1",
           accountNo: process.env.KIWOOM_ACC1_NUMBER.trim().replace(/['"]/g, ""),
           appKey: process.env.KIWOOM_ACC1_APP_KEY!.trim().replace(/['"]/g, ""),
           secretKey: process.env.KIWOOM_ACC1_APP_SECRET!.trim().replace(/['"]/g, ""),
@@ -74,7 +99,7 @@ export class KiwoomClient {
       }
       if (process.env.KIWOOM_ACC2_NUMBER) {
         configs.push({
-          label: "Acc 2",
+          label: "Kiwoom Acc 2",
           accountNo: process.env.KIWOOM_ACC2_NUMBER.trim().replace(/['"]/g, ""),
           appKey: process.env.KIWOOM_ACC2_APP_KEY!.trim().replace(/['"]/g, ""),
           secretKey: process.env.KIWOOM_ACC2_APP_SECRET!.trim().replace(/['"]/g, ""),
@@ -84,6 +109,42 @@ export class KiwoomClient {
       console.error("Error parsing Kiwoom accounts from .env:", e);
     }
     return configs;
+  }
+
+  /**
+   * Force-refresh OAuth tokens for every configured Kiwoom account (deduped by appKey).
+   * Used by the manual "Refresh Token" button in the top nav.
+   */
+  static async refreshAllTokens(): Promise<
+    { broker: "kiwoom"; label: string; ok: boolean; expiresAt?: string; error?: string }[]
+  > {
+    const accounts = this.getAccounts();
+    const results: { broker: "kiwoom"; label: string; ok: boolean; expiresAt?: string; error?: string }[] = [];
+    const seen = new Set<string>();
+
+    for (const acc of accounts) {
+      if (seen.has(acc.appKey)) continue;
+      seen.add(acc.appKey);
+      try {
+        await TokenManager.getToken(acc.appKey, acc.secretKey, true);
+        const status = TokenManager.getStatus(acc.appKey);
+        results.push({
+          broker: "kiwoom",
+          label: acc.label,
+          ok: true,
+          expiresAt: status.expiresAt ? new Date(status.expiresAt).toISOString() : undefined,
+        });
+      } catch (err: unknown) {
+        results.push({
+          broker: "kiwoom",
+          label: acc.label,
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    return results;
   }
 
   private static async request(config: AccountConfig, path: string, apiId: string, body: any = {}) {

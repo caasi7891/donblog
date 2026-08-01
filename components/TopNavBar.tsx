@@ -6,18 +6,78 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { WinningStreak } from "./WinningStreak";
 
+type TokenBtnState = "idle" | "loading" | "ok" | "error";
+
 export function TopNavBar() {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [tokenState, setTokenState] = useState<TokenBtnState>("idle");
+  const [tokenMessage, setTokenMessage] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const tokenResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleTokenRefresh = async () => {
+    if (tokenState === "loading") return;
+    if (tokenResetTimer.current) clearTimeout(tokenResetTimer.current);
+
+    setTokenState("loading");
+    setTokenMessage("");
+    try {
+      const res = await fetch("/api/trading/token/refresh", { method: "POST" });
+      const data = await res.json();
+      type RefreshResult = {
+        broker: string;
+        label: string;
+        ok: boolean;
+        expiresAt?: string;
+        error?: string;
+      };
+      const results: RefreshResult[] = data.results ?? [];
+
+      if (!res.ok || !data.success) {
+        const failed = results.filter((r) => !r.ok);
+        const detail =
+          data.error ||
+          failed.map((r) => `${r.label}: ${r.error ?? "fail"}`).join(" · ") ||
+          "Token refresh failed";
+        setTokenState("error");
+        setTokenMessage(detail);
+      } else {
+        const summary = results
+          .map((r) => {
+            const when = r.expiresAt
+              ? new Date(r.expiresAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })
+              : "ok";
+            return `${r.label} ~ ${when}`;
+          })
+          .join(" · ");
+        setTokenState("ok");
+        setTokenMessage(summary || `갱신 완료 (${data.okCount}/${data.total})`);
+      }
+    } catch (err) {
+      setTokenState("error");
+      setTokenMessage(err instanceof Error ? err.message : "Network error");
+    }
+
+    tokenResetTimer.current = setTimeout(() => {
+      setTokenState("idle");
+      setTokenMessage("");
+    }, 5000);
+  };
 
   useEffect(() => {
     if (searchOpen) {
       inputRef.current?.focus();
     }
   }, [searchOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (tokenResetTimer.current) clearTimeout(tokenResetTimer.current);
+    };
+  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +152,34 @@ export function TopNavBar() {
             <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse border border-white/20"></div>
           ) : user ? (
             <div className="flex items-center gap-2">
+              {/* Kiwoom + KIS token refresh — left of Write Post */}
+              <button
+                type="button"
+                onClick={handleTokenRefresh}
+                disabled={tokenState === "loading"}
+                title={tokenMessage || "Refresh Kiwoom & KIS API tokens"}
+                className={`hidden md:inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors border disabled:opacity-60 disabled:cursor-wait ${
+                  tokenState === "ok"
+                    ? "bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/30"
+                    : tokenState === "error"
+                      ? "bg-red-500/15 hover:bg-red-500/25 text-red-300 border-red-500/30"
+                      : "bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border-white/10"
+                }`}
+              >
+                {tokenState === "loading" ? (
+                  <>
+                    <span className="inline-block w-3 h-3 border-2 border-neutral-400 border-t-transparent rounded-full animate-spin" />
+                    Refreshing…
+                  </>
+                ) : tokenState === "ok" ? (
+                  "Token OK"
+                ) : tokenState === "error" ? (
+                  "Token Fail"
+                ) : (
+                  "Refresh Token"
+                )}
+              </button>
+
               {/* Write Post — left of avatar */}
               <Link
                 href="/write"
